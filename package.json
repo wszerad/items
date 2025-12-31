@@ -1,0 +1,47 @@
+{
+  "name": "items",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run typecheck && npm run bundle",
+    "typecheck": "tsgo -p tsconfig.json",
+    "bundle": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint src",
+    "lint:format": "oxlint src && oxfmt --check src",
+    "format": "oxfmt src"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@typescript/native-preview": "^7.0.0-dev.20251231.1",
+    "oxfmt": "^0.21.0",
+    "oxlint": "^1.36.0",
+    "tsdown": "^0.18.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "keywords": [
+    "array",
+    "diff"
+  ],
+  "author": "Wszerad Martynowski",
+  "repository": {
+    "type": "npm",
+    "url": "https://www.npmjs.com/package/@wszerad/items"
+  },
+  "license": "MIT",
+  "module": "./dist/index.js"
+}
