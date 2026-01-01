@@ -4,12 +4,15 @@ Lightweight, immutable collection manager inspired by NgRx Entity Adapter.
 
 ## Features
 
-- ✅ Immutable operations (addOne, setOne, updateOne, removeOne, etc.)
+- ✅ Immutable operations (insert, upsert, update, remove, filter, etc.)
 - ✅ Custom ID selection (`selectId`)
 - ✅ Optional sorting (`sortComparer`)
 - ✅ TypeScript-first with full type safety
 - ✅ Zero dependencies
 - ✅ Tree-shakeable ESM build
+- ✅ Flexible selectors (ID, array of IDs, or predicate function)
+- ✅ Built-in pagination support
+- ✅ Diff detection between collections
 
 ## Installation
 
@@ -20,7 +23,7 @@ npm install items
 ## Quick Start
 
 ```typescript
-import { createItems } from 'items'
+import { Items } from 'items'
 
 interface User {
   id: number
@@ -29,137 +32,214 @@ interface User {
 }
 
 // Create collection
-const items = createItems<User>()
+const items = new Items<number, User>()
 
-// Add entities
-const withUsers = items.addMany([
+// Add entities (skips duplicates)
+const withUsers = items.insert(
   { id: 1, name: 'Alice', age: 25 },
   { id: 2, name: 'Bob', age: 30 }
-])
+)
 
 // Query
-console.log(withUsers.getAll()) // [{ id: 1, ... }, { id: 2, ... }]
-console.log(withUsers.selectById(1)) // { id: 1, name: 'Alice', age: 25 }
+console.log(withUsers.getIds()) // [1, 2]
+console.log(withUsers.select(1)) // { id: 1, name: 'Alice', age: 25 }
+console.log(withUsers.length) // 2
 
 // Update
-const updated = withUsers.updateOne({ id: 1, changes: { age: 26 } })
+const updated = withUsers.update(1, { age: 26 })
 
 // Remove
-const removed = updated.removeOne(1)
+const removed = updated.remove(1)
 ```
 
 ## API Reference
 
-### Factory Function
+### Constructor
 
-#### `createItems<T>(options?)`
+#### `new Items<I, E>(items?, options?)`
 
-Creates a new empty `Items` instance.
+Creates an `Items` instance with optional initial items and options.
 
 ```typescript
-const items = createItems<User>({
+// Empty collection
+const items = new Items<number, User>()
+
+// With initial items
+const items = new Items<number, User>([
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' }
+])
+
+// With options
+const items = new Items<number, User>([], {
   selectId: (user) => user.id,           // default: entity.id
   sortComparer: (a, b) => a.name.localeCompare(b.name) // default: false
 })
 ```
 
-### Constructor
+### Properties
 
-#### `new Items<T>(state, options?)`
-
-Creates an `Items` instance with initial state.
+- **`length`** – Number of entities in the collection
 
 ```typescript
-const items = new Items<User>(
-  {
-    ids: [1, 2],
-    entities: {
-      1: { id: 1, name: 'Alice' },
-      2: { id: 2, name: 'Bob' }
-    }
-  },
-  { selectId: (user) => user.id }
-)
+items.length // 2
 ```
 
 ### Methods
 
-#### Add Operations
+#### Insert Operations
 
-- **`addOne(entity)`** – Adds one entity (skips if exists)
-- **`addMany(entities)`** – Adds multiple entities (skips duplicates)
-
-```typescript
-items.addOne({ id: 1, name: 'Alice' })
-items.addMany([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }])
-```
-
-#### Set Operations
-
-- **`setOne(entity)`** – Adds or replaces one entity
-- **`setMany(entities)`** – Adds or replaces multiple entities
-- **`setAll(entities)`** – Replaces entire collection
+- **`insert(...entities)`** – Adds entities (skips if already exist)
 
 ```typescript
-items.setOne({ id: 1, name: 'Alice Updated' })
-items.setAll([{ id: 3, name: 'Charlie' }])
-```
-
-#### Update Operations
-
-- **`updateOne(update)`** – Partially updates one entity
-- **`updateMany(updates)`** – Partially updates multiple entities
-
-```typescript
-items.updateOne({ id: 1, changes: { age: 26 } })
-items.updateMany([
-  { id: 1, changes: { age: 26 } },
-  { id: 2, changes: { age: 31 } }
-])
+items.insert({ id: 1, name: 'Alice' })
+items.insert(
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' }
+)
 ```
 
 #### Upsert Operations
 
-- **`upsertOne(entity)`** – Adds or replaces one entity
-- **`upsertMany(entities)`** – Adds or replaces multiple entities
+- **`upsert(...entities)`** – Adds or replaces entities
 
 ```typescript
-items.upsertOne({ id: 1, name: 'Alice' })
+items.upsert({ id: 1, name: 'Alice Updated' })
+items.upsert(
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' }
+)
+```
+
+#### Update Operations
+
+- **`update(selector, updater)`** – Updates entities matching selector
+
+The updater can be a partial object or a function that returns the updated entity.
+
+```typescript
+// Update by ID with partial
+items.update(1, { age: 26 })
+
+// Update by ID with function
+items.update(1, user => ({ ...user, age: user.age + 1 }))
+
+// Update by multiple IDs
+items.update([1, 2], { age: 26 })
+
+// Update by predicate
+items.update(
+  user => user.age < 30,
+  { age: 26 }
+)
 ```
 
 #### Remove Operations
 
-- **`removeOne(id)`** – Removes one entity
-- **`removeMany(ids)`** – Removes multiple entities
-- **`removeAll()`** – Clears collection
+- **`remove(selector)`** – Removes entities matching selector
 
 ```typescript
-items.removeOne(1)
-items.removeMany([1, 2])
-items.removeAll()
+// Remove by ID
+items.remove(1)
+
+// Remove by multiple IDs
+items.remove([1, 2])
+
+// Remove by predicate
+items.remove(user => user.age < 30)
+```
+
+- **`clear()`** – Removes all entities
+
+```typescript
+items.clear()
+```
+
+#### Filter Operations
+
+- **`filter(selector)`** – Returns new collection with only matching entities
+
+```typescript
+// Filter by ID
+items.filter(1)
+
+// Filter by multiple IDs
+items.filter([1, 2])
+
+// Filter by predicate
+items.filter(user => user.age >= 30)
 ```
 
 #### Selectors
 
-- **`getState()`** – Returns `{ ids, entities }` (immutable copy)
 - **`getIds()`** – Returns array of IDs
-- **`getEntities()`** – Returns entities record
-- **`getAll()`** – Returns array of entities (in ID order)
-- **`getTotal()`** – Returns count of entities
-- **`selectById(id)`** – Returns entity by ID or `undefined`
+- **`getEntities()`** – Returns Map of entities
+- **`select(id)`** – Returns entity by ID or `undefined`
 
 ```typescript
-items.getAll() // [{ id: 1, ... }, { id: 2, ... }]
-items.selectById(1) // { id: 1, name: 'Alice' }
-items.getTotal() // 2
+items.getIds() // [1, 2]
+items.getEntities() // Map { 1 => {...}, 2 => {...} }
+items.select(1) // { id: 1, name: 'Alice' }
 ```
 
-#### Utility
+#### Has/Check Operations
 
-- **`map<U>(fn)`** – Maps over entities
+- **`has(selector)`** – Checks if entities exist
 
 ```typescript
-items.map((user, id) => user.name) // ['Alice', 'Bob']
+// Check single ID
+items.has(1) // true
+
+// Check multiple IDs (returns true only if ALL exist)
+items.has([1, 2]) // true
+
+// Check by predicate (returns true if ANY matches)
+items.has(user => user.age >= 30) // true
+```
+
+#### Pagination
+
+- **`page(pageNumber, pageSize)`** – Returns paginated results
+
+```typescript
+const result = items.page(0, 10)
+// {
+//   items: [...],
+//   page: 0,
+//   pageSize: 10,
+//   hasNext: true,
+//   hasPrevious: false,
+//   total: 25,
+//   totalPages: 3
+// }
+```
+
+#### Diff Detection
+
+- **`diff(base)`** – Compares with another collection
+
+```typescript
+const base = new Items([{ id: 1, name: 'Alice' }])
+const updated = base.insert({ id: 2, name: 'Bob' })
+const diff = updated.diff(base)
+// {
+//   added: [2],
+//   removed: [],
+//   updated: []
+// }
+```
+
+#### Iteration
+
+Items implements the iterable protocol:
+
+```typescript
+for (const user of items) {
+  console.log(user.name)
+}
+
+// Or use spread
+const array = [...items]
 ```
 
 ## Options
@@ -174,7 +254,7 @@ interface Book {
   title: string
 }
 
-const items = createItems<Book>({
+const items = new Items<string, Book>([], {
   selectId: (book) => book.isbn
 })
 ```
@@ -185,26 +265,34 @@ Optional sort function. Set to `false` to disable sorting (default).
 
 ```typescript
 // Sort by name ascending
-const items = createItems<User>({
+const items = new Items<number, User>([], {
   sortComparer: (a, b) => a.name.localeCompare(b.name)
 })
 
 // Sort by age descending
-const items = createItems<User>({
+const items = new Items<number, User>([], {
   sortComparer: (a, b) => b.age - a.age
 })
 ```
+
+## Selectors
+
+Many methods accept a flexible `Selector` parameter that can be:
+
+1. **Single ID** – `items.update(1, { age: 26 })`
+2. **Array of IDs** – `items.remove([1, 2, 3])`
+3. **Predicate function** – `items.filter(user => user.age >= 30)`
 
 ## Immutability
 
 All operations return a **new** `Items` instance. Original instance is never modified.
 
 ```typescript
-const items1 = createItems<User>()
-const items2 = items1.addOne({ id: 1, name: 'Alice' })
+const items1 = new Items<number, User>()
+const items2 = items1.insert({ id: 1, name: 'Alice' })
 
-console.log(items1.getTotal()) // 0
-console.log(items2.getTotal()) // 1
+console.log(items1.length) // 0
+console.log(items2.length) // 1
 ```
 
 ## TypeScript
@@ -218,32 +306,99 @@ interface User {
   age: number
 }
 
-const items = createItems<User>()
+const items = new Items<number, User>()
 
 // ✅ Type-safe
-items.addOne({ id: 1, name: 'Alice', age: 25 })
+items.insert({ id: 1, name: 'Alice', age: 25 })
 
 // ❌ Type error
-items.addOne({ id: 1, name: 'Alice' }) // Missing 'age'
+items.insert({ id: 1, name: 'Alice' }) // Missing 'age'
+```
+
+## Examples
+
+### Basic CRUD
+
+```typescript
+import { Items } from 'items'
+
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+}
+
+let todos = new Items<number, Todo>()
+
+// Add
+todos = todos.insert(
+  { id: 1, text: 'Learn Items', completed: false },
+  { id: 2, text: 'Build app', completed: false }
+)
+
+// Update
+todos = todos.update(1, { completed: true })
+
+// Filter
+const completed = todos.filter(todo => todo.completed)
+
+// Remove
+todos = todos.remove(1)
+```
+
+### With Custom ID
+
+```typescript
+interface Product {
+  sku: string
+  name: string
+  price: number
+}
+
+const products = new Items<string, Product>([], {
+  selectId: (product) => product.sku
+})
+
+const updated = products.insert(
+  { sku: 'ABC-123', name: 'Widget', price: 19.99 }
+)
+
+console.log(updated.select('ABC-123'))
+```
+
+### With Sorting
+
+```typescript
+const items = new Items<number, User>(
+  [
+    { id: 3, name: 'Charlie', age: 35 },
+    { id: 1, name: 'Alice', age: 25 },
+    { id: 2, name: 'Bob', age: 30 }
+  ],
+  { sortComparer: (a, b) => a.name.localeCompare(b.name) }
+)
+
+console.log(items.getIds()) // [1, 2, 3] - sorted by name
 ```
 
 ---
 
 ## Development
 
-## Skrypty
+### Scripts
 
-- `npm test` – uruchamia testy (Vitest)
-- `npm run test:watch` – tryb watch
-- `npm run build` – typecheck + bundlowanie (tsc + tsdown)
-- `npm run typecheck` – sprawdzenie typów TypeScript (tsc, bez emitowania)
-- `npm run bundle` – bundlowanie (tsdown → `dist/` + `.d.ts`)
+- `npm test` – runs tests (Vitest)
+- `npm run test:watch` – watch mode
+- `npm run build` – typecheck + bundling (tsc + tsdown)
+- `npm run typecheck` – TypeScript type checking (tsc, no emit)
+- `npm run bundle` – bundling (tsdown → `dist/` + `.d.ts`)
 - `npm run lint` – lint (oxlint / oxc)
-- `npm run format` – auto-fix (oxlint --fix; w praktyce zastępuje podstawowe formatowanie/naprawy)
+- `npm run format` – auto-fix (oxlint --fix)
 
-## Narzędzia
+### Tools
 
 - TypeScript: `tsconfig.json`
 - Vitest: `vitest.config.ts`
 - OXC: `oxlint` + `.oxlintrc.json`
 - tsdown: `tsdown.config.ts`
+
