@@ -4,7 +4,8 @@ Lightweight, immutable collection manager inspired by NgRx Entity Adapter.
 
 ## Features
 
-- ✅ Immutable operations (insert, upsert, set, update, remove, filter, etc.)
+- ✅ Immutable operations (insert/insertMany, upsert/upsertMany, set/setMany, update, remove, filter, etc.)
+- ✅ Single entity and batch operations
 - ✅ Custom ID selection (`selectId`)
 - ✅ Optional sorting (`sortComparer`)
 - ✅ TypeScript-first with full type safety
@@ -35,8 +36,11 @@ interface User {
 // Create collection
 const items = new Items<number, User>()
 
-// Add entities (skips duplicates)
-const withUsers = items.insert([
+// Add single entity
+const withUser = items.insert({ id: 1, name: 'Alice', age: 25 })
+
+// Add multiple entities (batch operation)
+const withUsers = items.insertMany([
   { id: 1, name: 'Alice', age: 25 },
   { id: 2, name: 'Bob', age: 30 }
 ])
@@ -90,14 +94,15 @@ items.length // 2
 
 #### Insert Operations
 
-- **`insert(entities)`** – Adds entities (skips if already exist). Accepts an `Iterable<E>` (array, Set, etc.)
+- **`insert(entity)`** – Adds a single entity (skips if already exists)
+- **`insertMany(entities)`** – Adds multiple entities (skips duplicates). Accepts an `Iterable<E>` (array, Set, etc.)
 
 ```typescript
 // Insert single entity
-items.insert([{ id: 1, name: 'Alice' }])
+items.insert({ id: 1, name: 'Alice' })
 
 // Insert multiple entities
-items.insert([
+items.insertMany([
   { id: 1, name: 'Alice' },
   { id: 2, name: 'Bob' }
 ])
@@ -107,59 +112,61 @@ const usersSet = new Set([
   { id: 1, name: 'Alice' },
   { id: 2, name: 'Bob' }
 ])
-items.insert(usersSet)
+items.insertMany(usersSet)
 
 // Skips duplicates - won't replace existing entity with id: 1
-items.insert([{ id: 1, name: 'Alice Updated' }]) // Original stays
+items.insert({ id: 1, name: 'Alice Updated' }) // Original stays
 ```
 
 #### Upsert Operations
 
-- **`upsert(entities)`** – Adds or **merges** entities (extends existing properties). Accepts an `Iterable<E>` (array, Set, etc.)
+- **`upsert(entity)`** – Adds or **merges** a single entity (extends existing properties)
+- **`upsertMany(entities)`** – Adds or **merges** multiple entities. Accepts an `Iterable<E>` (array, Set, etc.)
 
 **Note:** `upsert` merges/extends properties with existing entities, similar to `Object.assign()` or spread operator behavior.
 
 ```typescript
-// Upsert new entity
-items.upsert([{ id: 1, name: 'Alice' }])
+// Upsert single entity
+items.upsert({ id: 1, name: 'Alice' })
 
 // Upsert existing entity - MERGES properties
 const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
-const updated = items.upsert([{ id: 1, name: 'Alice Updated' }])
+const updated = items.upsert({ id: 1, name: 'Alice Updated' })
 // Result: { id: 1, name: 'Alice Updated', age: 25 }
 // Note: age is preserved!
 
 // Upsert multiple entities
-items.upsert([
+items.upsertMany([
   { id: 1, name: 'Alice' },
   { id: 2, name: 'Bob' }
 ])
 
 // Adding new properties
 const items = new Items([{ id: 1, name: 'Alice' }])
-const updated = items.upsert([{ id: 1, age: 25 }])
+const updated = items.upsert({ id: 1, age: 25 })
 // Result: { id: 1, name: 'Alice', age: 25 }
 // Note: name is preserved, age is added
 ```
 
 #### Set Operations
 
-- **`set(entities)`** – Adds or **completely replaces** entities. Accepts an `Iterable<E>` (array, Set, etc.)
+- **`set(entity)`** – Adds or **completely replaces** a single entity
+- **`setMany(entities)`** – Adds or **completely replaces** multiple entities. Accepts an `Iterable<E>` (array, Set, etc.)
 
 **Note:** `set` completely replaces existing entities, removing any properties not in the new entity.
 
 ```typescript
-// Set new entity
-items.set([{ id: 1, name: 'Alice' }])
+// Set single entity
+items.set({ id: 1, name: 'Alice' })
 
 // Set existing entity - REPLACES completely
 const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
-const updated = items.set([{ id: 1, name: 'Alice Updated' }])
+const updated = items.set({ id: 1, name: 'Alice Updated' })
 // Result: { id: 1, name: 'Alice Updated' }
 // Note: age is removed!
 
 // Set multiple entities
-items.set([
+items.setMany([
   { id: 1, name: 'Alice' },
   { id: 2, name: 'Bob' }
 ])
@@ -167,22 +174,23 @@ items.set([
 
 #### Update Operations
 
-- **`update(selector, updater)`** – Updates entities matching selector
+- **`update(id, updater)`** – Updates a single entity by ID
+- **`updateMany(selector, updater)`** – Updates multiple entities matching selector
 
 The updater can be a partial object or a function that returns the updated entity.
 
 ```typescript
-// Update by ID with partial
+// Update single entity by ID with partial
 items.update(1, { age: 26 })
 
-// Update by ID with function
+// Update single entity by ID with function
 items.update(1, user => ({ ...user, age: user.age + 1 }))
 
-// Update by multiple IDs
-items.update([1, 2], { age: 26 })
+// Update multiple entities by IDs
+items.updateMany([1, 2], { age: 26 })
 
-// Update by predicate
-items.update(
+// Update multiple entities by predicate
+items.updateMany(
   user => user.age < 30,
   { age: 26 }
 )
@@ -190,17 +198,18 @@ items.update(
 
 #### Remove Operations
 
-- **`remove(selector)`** – Removes entities matching selector
+- **`remove(id)`** – Removes a single entity by ID
+- **`removeMany(selector)`** – Removes multiple entities matching selector
 
 ```typescript
-// Remove by ID
+// Remove single entity by ID
 items.remove(1)
 
-// Remove by multiple IDs
-items.remove([1, 2])
+// Remove multiple entities by IDs
+items.removeMany([1, 2])
 
-// Remove by predicate
-items.remove(user => user.age < 30)
+// Remove multiple entities by predicate
+items.removeMany(user => user.age < 30)
 ```
 
 - **`clear()`** – Removes all entities
@@ -238,17 +247,24 @@ items.select(1) // { id: 1, name: 'Alice' }
 
 #### Has/Check Operations
 
-- **`has(selector)`** – Checks if entities exist
+- **`has(id)`** – Checks if a single entity exists by ID
+- **`hasMany(selector)`** – Checks if entities exist matching selector
 
 ```typescript
-// Check single ID
+// Check single entity by ID
 items.has(1) // true
+items.has(99) // false
 
 // Check multiple IDs (returns true only if ALL exist)
-items.has([1, 2]) // true
+items.hasMany([1, 2]) // true
+items.hasMany([1, 99]) // false
 
 // Check by predicate (returns true if ANY matches)
-items.has(user => user.age >= 30) // true
+items.hasMany(user => user.age >= 30) // true
+items.hasMany(user => user.age >= 100) // false
+
+// Check single ID using array
+items.hasMany([1]) // true
 ```
 
 - **`every(predicate)`** – Returns `true` if ALL entities match the predicate
@@ -561,11 +577,25 @@ const validateProducts = (items: Items<number, Product>) => {
 
 ## Selectors
 
-Many methods accept a flexible `Selector` parameter that can be:
+Methods come in two flavors:
 
-1. **Single ID** – `items.update(1, { age: 26 })`
-2. **Array of IDs** – `items.remove([1, 2, 3])`
-3. **Predicate function** – `items.filter(user => user.age >= 30)`
+### Single Entity Methods
+Accept a single ID directly:
+- `insert(entity)`, `upsert(entity)`, `set(entity)`
+- `update(id, updater)` – `items.update(1, { age: 26 })`
+- `remove(id)` – `items.remove(1)`
+- `has(id)` – `items.has(1)`
+
+### Batch Methods
+Accept a `Selector` parameter that can be:
+1. **Array of IDs** – `items.removeMany([1, 2, 3])`
+2. **Predicate function** – `items.filter(user => user.age >= 30)`
+
+Methods with `*Many` suffix always operate on multiple entities:
+- `insertMany(entities)`, `upsertMany(entities)`, `setMany(entities)`
+- `updateMany(selector, updater)`
+- `removeMany(selector)`
+- `filter(selector)`, `hasMany(selector)`
 
 ## Immutability
 
@@ -573,7 +603,7 @@ All operations return a **new** `Items` instance. Original instance is never mod
 
 ```typescript
 const items1 = new Items<number, User>()
-const items2 = items1.insert([{ id: 1, name: 'Alice' }])
+const items2 = items1.insert({ id: 1, name: 'Alice' })
 
 console.log(items1.length) // 0
 console.log(items2.length) // 1
@@ -593,10 +623,10 @@ interface User {
 const items = new Items<number, User>()
 
 // ✅ Type-safe
-items.insert([{ id: 1, name: 'Alice', age: 25 }])
+items.insert({ id: 1, name: 'Alice', age: 25 })
 
 // ❌ Type error
-items.insert([{ id: 1, name: 'Alice' }]) // Missing 'age'
+items.insert({ id: 1, name: 'Alice' }) // Missing 'age'
 ```
 
 ## Examples
@@ -614,10 +644,13 @@ interface Todo {
 
 let todos = new Items<number, Todo>()
 
-// Add
-todos = todos.insert([
-  { id: 1, text: 'Learn Items', completed: false },
-  { id: 2, text: 'Build app', completed: false }
+// Add single todo
+todos = todos.insert({ id: 1, text: 'Learn Items', completed: false })
+
+// Add multiple todos
+todos = todos.insertMany([
+  { id: 2, text: 'Build app', completed: false },
+  { id: 3, text: 'Deploy', completed: false }
 ])
 
 // Update (merges with existing)
@@ -648,20 +681,20 @@ let users = new Items<number, User>([
 ])
 
 // INSERT - only adds if doesn't exist, skips if exists
-users = users.insert([{ id: 1, name: 'Alice Updated', age: 30 }])
+users = users.insert({ id: 1, name: 'Alice Updated', age: 30 })
 // Result: { id: 1, name: 'Alice', email: 'alice@example.com', age: 25 }
 // Note: Original entity unchanged because id: 1 already exists
 
-users = users.insert([{ id: 2, name: 'Bob' }])
+users = users.insert({ id: 2, name: 'Bob' })
 // Result: Adds Bob with id: 2 since it doesn't exist
 
 // UPSERT - merges properties (adds new, extends existing)
-users = users.upsert([{ id: 1, name: 'Alicia', age: 26 }])
+users = users.upsert({ id: 1, name: 'Alicia', age: 26 })
 // Result: { id: 1, name: 'Alicia', email: 'alice@example.com', age: 26 }
 // Note: name and age updated, email preserved!
 
 // SET - completely replaces entity
-users = users.set([{ id: 1, name: 'Alice' }])
+users = users.set({ id: 1, name: 'Alice' })
 // Result: { id: 1, name: 'Alice' }
 // Note: email and age are removed!
 
@@ -669,61 +702,60 @@ users = users.set([{ id: 1, name: 'Alice' }])
 users = users.update(1, { age: 27 })
 // Result: { id: 1, name: 'Alice', age: 27 }
 // Note: age added, name preserved
-```
 
-### With Custom ID
-
-```typescript
-interface Product {
-  sku: string
-  name: string
-  price: number
-}
-
-const products = new Items<string, Product>([], {
-  selectId: (product) => product.sku
-})
-
-const updated = products.insert([
-  { sku: 'ABC-123', name: 'Widget', price: 19.99 }
+// Batch operations with *Many methods
+users = users.insertMany([
+  { id: 3, name: 'Charlie' },
+  { id: 4, name: 'Dave' }
 ])
 
-console.log(updated.select('ABC-123'))
+users = users.upsertMany([
+  { id: 1, age: 28 },
+  { id: 3, email: 'charlie@example.com' }
+])
+
+users = users.setMany([
+  { id: 2, name: 'Robert', age: 35 }
+])
 ```
 
-### With Sorting
+### Checking Entity Existence
 
 ```typescript
-const items = new Items<number, User>(
-  [
-    { id: 3, name: 'Charlie', age: 35 },
-    { id: 1, name: 'Alice', age: 25 },
-    { id: 2, name: 'Bob', age: 30 }
-  ],
-  { sortComparer: (a, b) => a.name.localeCompare(b.name) }
-)
+import { Items } from 'items'
 
-console.log(items.getIds()) // [1, 2, 3] - sorted by name
-```
+const users = new Items<number, User>([
+  { id: 1, name: 'Alice', age: 25 },
+  { id: 2, name: 'Bob', age: 30 },
+  { id: 3, name: 'Charlie', age: 35 }
+])
 
----
+// Check single entity exists
+if (users.has(1)) {
+  console.log('User 1 exists')
+}
 
-## Development
+if (!users.has(99)) {
+  console.log('User 99 does not exist')
+}
 
-### Scripts
+// Check multiple entities exist (ALL must exist)
+if (users.hasMany([1, 2])) {
+  console.log('Users 1 and 2 both exist')
+}
 
-- `npm test` – runs tests (Vitest)
-- `npm run test:watch` – watch mode
-- `npm run build` – typecheck + bundling (tsc + tsdown)
-- `npm run typecheck` – TypeScript type checking (tsc, no emit)
-- `npm run bundle` – bundling (tsdown → `dist/` + `.d.ts`)
-- `npm run lint` – lint (oxlint / oxc)
-- `npm run format` – auto-fix (oxlint --fix)
+if (!users.hasMany([1, 99])) {
+  console.log('Not all users exist')
+}
 
-### Tools
+// Check if any entity matches condition
+if (users.hasMany(user => user.age >= 30)) {
+  console.log('At least one user is 30 or older')
+}
 
-- TypeScript: `tsconfig.json`
-- Vitest: `vitest.config.ts`
-- OXC: `oxlint` + `.oxlintrc.json`
-- tsdown: `tsdown.config.ts`
+// Use with conditionals
+const userExists = users.has(1)
+const allExist = users.hasMany([1, 2, 3])
+const hasAdults = users.hasMany(user => user.age >= 18)
 
+// Combine with ot

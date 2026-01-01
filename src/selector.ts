@@ -1,7 +1,7 @@
 import { Items } from './Items'
 
 export type SelectorFn<I, E> = (entity: E) => boolean
-export type Selector<I, E> = I | Iterable<I> | SelectorFn<I, E>
+export type Selector<I, E> = Iterable<I> | SelectorFn<I, E>
 export type Operation<I, E> = (entity: E | undefined, id: I) => void
 
 export function selector<I, E>(items: Items<I, E>, selector: Selector<I, E>, operation: Operation<I, E>) {
@@ -11,9 +11,6 @@ export function selector<I, E>(items: Items<I, E>, selector: Selector<I, E>, ope
         operation(entity, id)
       }
     })
-  } else if (['string', 'number'].includes(typeof selector)) {
-    const id = selector as I
-    operation(items.select(id), id)
   } else {
     Array
       .from(selector as Iterable<I>)

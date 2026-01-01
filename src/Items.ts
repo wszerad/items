@@ -52,24 +52,40 @@ export class Items<I, E> {
     return this.state.entities.get(id)
   }
 
-  insert(entities: Iterable<E>) {
+  insert(entity: E) {
+    return this.insertMany([entity])
+  }
+
+  insertMany(entities: Iterable<E>) {
     return new Items([
       ...this,
       ...Array.from(entities).filter(entity => !this.has(this.selectId(entity)))
     ], this.options)
   }
 
-  upsert(entities: Iterable<E>) {
+  upsert(entity: E) {
+    return this.upsertMany([entity])
+  }
+
+  upsertMany(entities: Iterable<E>) {
     const clone = this.getEntities()
     Array.from(entities).forEach(entity => {
       const id = this.selectId(entity)
-      const existing = clone.get(id) || {}
-      clone.set(id, { ...existing, ...entity })
+      const existing = clone.get(id)
+      if (existing) {
+        clone.set(id, { ...existing, ...entity })
+      } else {
+        clone.set(id, entity)
+      }
     })
     return new Items(clone.values(), this.options)
   }
 
-  set(entities: Iterable<E>) {
+  set(entity: E) {
+    return this.setMany([entity])
+  }
+
+  setMany(entities: Iterable<E>) {
     return new Items([
       ...this,
       ...entities
@@ -84,10 +100,14 @@ export class Items<I, E> {
     return this.getIds().some(id => check(this.select(id)!))
   }
 
-  has(select: Selector<I, E>) {
+  has(id: I) {
+    return this.state.ids.includes(id)
+  }
+
+  hasMany(select: Selector<I, E>) {
     let failToFind = false
     let result = false
-    selector(this, select, (entity, id) => {
+    selector(this, select, (entity) => {
       if (entity) {
         result = true
       } else {
@@ -97,7 +117,17 @@ export class Items<I, E> {
     return !failToFind && result
   }
 
-  update(select: Selector<I, E>, updater: Updater<I, E>) {
+  update(id: I, updater: Updater<I, E>) {
+    const entity = this.select(id)
+    if (!entity) {
+      return this
+    }
+    const clone = this.getEntities()
+    clone.set(id, update(entity, updater))
+    return new Items(clone.values(), this.options)
+  }
+
+  updateMany(select: Selector<I, E>, updater: Updater<I, E>) {
     const clone = this.getEntities()
     selector(this, select, (entity, id) => {
       if (entity) {
@@ -107,7 +137,13 @@ export class Items<I, E> {
     return new Items(clone.values(), this.options)
   }
 
-  remove(select: Selector<I, E>) {
+  remove(id: I) {
+    const clone = this.getEntities()
+    clone.delete(id)
+    return new Items(clone.values(), this.options)
+  }
+
+  removeMany(select: Selector<I, E>) {
     const clone = this.getEntities()
     selector(this, select, (_, id) => {
       clone.delete(id)
