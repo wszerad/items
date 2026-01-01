@@ -1045,7 +1045,7 @@ describe('Items', () => {
     })
 
     it('works with spread operator', () => {
-      const items = new Items([
+      const items = new Items<User>([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])

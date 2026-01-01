@@ -1,6 +1,6 @@
 export { Items } from './Items'
-export type { ItemsOptions, ItemsOptionsWithSelectId, ItemsOptionsWithoutSelectId, ItemsState } from './Items'
-export type { SelectId, Idable } from './selectId'
+export type { ItemsOptions, ItemsState } from './Items'
+export type { SelectId, StrOrNum } from './selectId'
 export type { Selector, SelectorFn, Operation } from './selector'
 export type { Updater, UpdateFn } from './updater'
 export type { ItemDiff, ItemsDiff } from './diff'

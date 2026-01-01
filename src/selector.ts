@@ -1,14 +1,14 @@
 import { Items } from './Items'
-import { Idable } from './selectId'
+import { StrOrNum } from './selectId'
 
-export type SelectorFn<E, I> = (entity: E) => boolean
-export type Selector<E, I> = Iterable<I> | SelectorFn<E, I>
+export type SelectorFn<E> = (entity: E) => boolean
+export type Selector<E, I> = Iterable<I> | SelectorFn<E>
 export type Operation<E, I> = (entity: E | undefined, id: I) => void
 
-export function selector<E, I extends Idable>(items: Items<E, I>, selector: Selector<E, I>, operation: Operation<E, I>) {
+export function selector<E, I extends StrOrNum>(items: Items<E, I>, selector: Selector<E, I>, operation: Operation<E, I>) {
   if (typeof selector === 'function') {
     items.getEntities().forEach((entity, id) => {
-      if ((selector as SelectorFn<E, I>)(entity)) {
+      if ((selector as SelectorFn<E>)(entity)) {
         operation(entity, id)
       }
     })

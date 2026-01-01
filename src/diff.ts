@@ -1,6 +1,6 @@
 import { diff } from 'ohash/utils'
 import { Items } from './Items'
-import { Idable } from './selectId'
+import { StrOrNum } from './selectId'
 
 export interface ItemDiff<I> {
   id: I
@@ -13,7 +13,7 @@ export interface ItemsDiff<I> {
   updated: ItemDiff<I>[]
 }
 
-export function itemsDiff<E, I extends Idable>(fromItems: Items<E, I>, toItems: Items<E, I>): ItemsDiff<I> {
+export function itemsDiff<E, I extends StrOrNum>(fromItems: Items<E, I>, toItems: Items<E, I>): ItemsDiff<I> {
   const ids = new Set(toItems.getIds())
   const baseIds = new Set(fromItems.getIds())
 
