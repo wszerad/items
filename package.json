@@ -24,6 +24,9 @@
     "lint:format": "oxlint src && oxfmt --check src",
     "format": "oxfmt src"
   },
+  "dependencies": {
+    "ohash": "^2.0.11"
+  },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "@typescript/native-preview": "^7.0.0-dev.20251231.1",

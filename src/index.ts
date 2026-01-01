@@ -1,252 +1,184 @@
+import { selectiveOperation, Selector } from './selector'
+import { update, Updater } from './updater'
+import { defaultSelectId } from './selectId'
+import { diff } from 'ohash/utils'
+
 export interface ItemsOptions<T> {
   selectId?: (entity: T) => string | number
   sortComparer?: false | ((a: T, b: T) => number)
 }
 
-export interface ItemsState<T> {
-  ids: Array<string | number>
-  entities: Record<string | number, T>
+export interface ItemsState<I, E> {
+  ids: I[]
+  entities: Map<I, E>
 }
 
-export interface Update<T> {
-  id: string | number
-  changes: Partial<T>
-}
-
-export class Items<T> {
-  private selectId: (entity: T) => string | number
-  private sortComparer: false | ((a: T, b: T) => number)
+export class Items<I, E> {
+  private state: ItemsState<I, E>
 
   constructor(
-    private state: ItemsState<T>,
-    options?: ItemsOptions<T>
+    items: Iterable<E> = [],
+    private options: ItemsOptions<E> = {}
   ) {
-    this.selectId = options?.selectId ?? ((entity: any) => entity.id)
-    this.sortComparer = options?.sortComparer ?? false
+    const entities = new Map(
+      Array
+        .from(items)
+        .map((item) => {
+          const id = this.selectId(item)
+          return [id, item]
+        })
+    )
+
+    this.state = {
+      ids: this.sortIds([...entities.keys()], entities),
+      entities
+    }
   }
 
-  getState(): ItemsState<T> {
-    return { ...this.state, ids: [...this.state.ids], entities: { ...this.state.entities } }
-  }
-
-  getIds(): Array<string | number> {
+  getIds(): I[] {
     return [...this.state.ids]
   }
 
-  getEntities(): Record<string | number, T> {
-    return { ...this.state.entities }
+  getEntities(): Map<I, E> {
+    return new Map(this.state.entities)
   }
 
-  getAll(): T[] {
-    return this.state.ids.map(id => this.state.entities[id])
-  }
-
-  getTotal(): number {
+  get length(): number {
     return this.state.ids.length
   }
 
-  selectById(id: string | number): T | undefined {
-    return this.state.entities[id]
+  select(id: I): E | undefined {
+    return this.state.entities.get(id)
   }
 
-  addOne(entity: T): Items<T> {
-    const id = this.selectId(entity)
-    if (this.state.entities[id]) {
-      return this
-    }
-    return this.addMany([entity])
+  insert(...entities: E[]) {
+    return new Items([
+      ...this,
+      ...entities.filter(entity => !this.has(this.selectId(entity)))
+    ], this.options)
   }
 
-  addMany(entities: T[]): Items<T> {
-    const newEntities = { ...this.state.entities }
-    const newIds = [...this.state.ids]
+  upsert(...entities: E[]) {
+    return new Items([
+      ...this,
+      ...entities
+    ], this.options)
+  }
 
-    for (const entity of entities) {
-      const id = this.selectId(entity)
-      if (!newEntities[id]) {
-        newEntities[id] = entity
-        newIds.push(id)
+  has(selector: Selector<I, E>) {
+    let result = true
+    selectiveOperation(this, selector, (entity, id) => {
+      if (!entity) {
+        result = false
       }
-    }
-
-    const sortedIds = this.sortComparer !== false
-      ? this.sortIds(newIds, newEntities)
-      : newIds
-
-    return new Items({ ids: sortedIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
     })
+    return result
   }
 
-  setOne(entity: T): Items<T> {
-    const id = this.selectId(entity)
-    const newEntities = { ...this.state.entities, [id]: entity }
-    const newIds = this.state.entities[id]
-      ? [...this.state.ids]
-      : [...this.state.ids, id]
-
-    const sortedIds = this.sortComparer !== false
-      ? this.sortIds(newIds, newEntities)
-      : newIds
-
-    return new Items({ ids: sortedIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
-    })
-  }
-
-  setMany(entities: T[]): Items<T> {
-    const newEntities = { ...this.state.entities }
-    const newIds = [...this.state.ids]
-
-    for (const entity of entities) {
-      const id = this.selectId(entity)
-      newEntities[id] = entity
-      if (!this.state.entities[id]) {
-        newIds.push(id)
-      }
-    }
-
-    const sortedIds = this.sortComparer !== false
-      ? this.sortIds(newIds, newEntities)
-      : newIds
-
-    return new Items({ ids: sortedIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
-    })
-  }
-
-  setAll(entities: T[]): Items<T> {
-    const newEntities: Record<string | number, T> = {}
-    const newIds: Array<string | number> = []
-
-    for (const entity of entities) {
-      const id = this.selectId(entity)
-      newEntities[id] = entity
-      newIds.push(id)
-    }
-
-    const sortedIds = this.sortComparer !== false
-      ? this.sortIds(newIds, newEntities)
-      : newIds
-
-    return new Items({ ids: sortedIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
-    })
-  }
-
-  updateOne(update: Update<T>): Items<T> {
-    return this.updateMany([update])
-  }
-
-  updateMany(updates: Update<T>[]): Items<T> {
-    const newEntities = { ...this.state.entities }
-    let hasChanges = false
-
-    for (const update of updates) {
-      const entity = newEntities[update.id]
+  update(selector: Selector<I, E>, updater: Updater<I, E>) {
+    const clone = this.getEntities()
+    selectiveOperation(this, selector, (entity, id) => {
       if (entity) {
-        newEntities[update.id] = { ...entity, ...update.changes }
-        hasChanges = true
+        clone.set(id, update(entity, updater))
       }
-    }
-
-    if (!hasChanges) {
-      return this
-    }
-
-    const sortedIds = this.sortComparer !== false
-      ? this.sortIds([...this.state.ids], newEntities)
-      : [...this.state.ids]
-
-    return new Items({ ids: sortedIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
     })
+    return new Items(clone.values(), this.options)
   }
 
-  upsertOne(entity: T): Items<T> {
-    return this.upsertMany([entity])
+  remove(selector: Selector<I, E>) {
+    const clone = this.getEntities()
+    selectiveOperation(this, selector, (_, id) => {
+      clone.delete(id)
+    })
+    return new Items(clone.values(), this.options)
   }
 
-  upsertMany(entities: T[]): Items<T> {
-    const newEntities = { ...this.state.entities }
-    const newIds = [...this.state.ids]
+  clear(): Items<I, E> {
+    return new Items([], this.options)
+  }
 
-    for (const entity of entities) {
-      const id = this.selectId(entity)
-      newEntities[id] = entity
-      if (!this.state.entities[id]) {
-        newIds.push(id)
+  filter(selector: Selector<I, E>) {
+    const clone = new Map<I, E>()
+
+    selectiveOperation(this, selector, (entity, id) => {
+      if (entity) {
+        clone.set(id, entity)
       }
+    })
+
+    return new Items(clone.values(), this.options)
+  }
+
+  page(page: number, pageSize: number) {
+    const totalPages = Math.ceil(this.length / pageSize)
+    return {
+      items: this.getIds()
+        .slice(page * pageSize, (page + 1) * pageSize)
+        .map(id => this.select(id)!),
+      page,
+      pageSize,
+      hasNext: page < totalPages,
+      hasPrevious: page > 0,
+      total: this.length,
+      totalPages
     }
-
-    const sortedIds = this.sortComparer !== false
-      ? this.sortIds(newIds, newEntities)
-      : newIds
-
-    return new Items({ ids: sortedIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
-    })
   }
 
-  removeOne(id: string | number): Items<T> {
-    return this.removeMany([id])
-  }
-
-  removeMany(ids: Array<string | number>): Items<T> {
-    const idsSet = new Set(ids)
-    const newEntities = { ...this.state.entities }
-    const newIds = this.state.ids.filter(id => {
-      if (idsSet.has(id)) {
-        delete newEntities[id]
-        return false
-      }
-      return true
-    })
-
-    if (newIds.length === this.state.ids.length) {
-      return this
-    }
-
-    return new Items({ ids: newIds, entities: newEntities }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
-    })
-  }
-
-  removeAll(): Items<T> {
-    return new Items({ ids: [], entities: {} }, {
-      selectId: this.selectId,
-      sortComparer: this.sortComparer
-    })
-  }
-
-  map<U>(fn: (entity: T, id: string | number) => U): U[] {
+  map<U>(fn: (entity: E, id: string | number) => U): U[] {
     return this.state.ids.map(id => fn(this.state.entities[id], id))
   }
 
+  diff(base: Items<I, E>) {
+    const ids = new Set(this.getIds())
+    const baseIds = new Set(base.getIds())
+
+    const removed: I[] = []
+    const updated = []
+
+    ids.forEach(id => {
+      if (!baseIds.has(id)) {
+        removed.push(id)
+      } else {
+        const d = diff(this.select(id), base.select(id))
+        updated.push(id)
+        baseIds.delete(id)
+      }
+    })
+
+    const added = [...baseIds]
+
+    return {
+      added,
+      removed,
+      updated:
+    }
+  }
+
   private sortIds(
-    ids: Array<string | number>,
-    entities: Record<string | number, T>
-  ): Array<string | number> {
+    ids: I[],
+    entities: Map<I, E>
+  ): Array<I> {
     if (this.sortComparer === false) {
       return ids
     }
     const sorter = this.sortComparer
     return [...ids].sort((aId, bId) => {
-      const a = entities[aId]
-      const b = entities[bId]
+      const a = entities.get(aId)!
+      const b = entities.get(bId)!
       return sorter(a, b)
     })
   }
-}
 
-export function createItems<T>(options?: ItemsOptions<T>): Items<T> {
-  return new Items({ ids: [], entities: {} }, options)
+  private selectId(entity: E): I {
+    return this.options?.selectId?.(entity) || defaultSelectId(entity)
+  }
+
+  private get sortComparer() {
+    return this.options.sortComparer || false
+  }
+
+  [Symbol.iterator](): Iterator<E> {
+    return this.state.entities.values()
+  }
 }
 
