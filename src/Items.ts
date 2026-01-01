@@ -60,6 +60,16 @@ export class Items<I, E> {
   }
 
   upsert(entities: Iterable<E>) {
+    const clone = this.getEntities()
+    Array.from(entities).forEach(entity => {
+      const id = this.selectId(entity)
+      const existing = clone.get(id) || {}
+      clone.set(id, { ...existing, ...entity })
+    })
+    return new Items(clone.values(), this.options)
+  }
+
+  set(entities: Iterable<E>) {
     return new Items([
       ...this,
       ...entities

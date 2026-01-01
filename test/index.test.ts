@@ -39,7 +39,7 @@ describe('Items', () => {
         [],
         { selectId: (book) => book.isbn }
       )
-      const updated = items.insert({ isbn: '978-0', title: 'Test', year: 2020 })
+      const updated = items.insert([{ isbn: '978-0', title: 'Test', year: 2020 }])
       expect(updated.getIds()).toEqual(['978-0'])
     })
 
@@ -58,7 +58,7 @@ describe('Items', () => {
   describe('insert', () => {
     it('inserts single entity', () => {
       const items = new Items<number, User>()
-      const updated = items.insert({ id: 1, name: 'Alice' })
+      const updated = items.insert([{ id: 1, name: 'Alice' }])
 
       expect(updated.getIds()).toEqual([1])
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
@@ -67,7 +67,7 @@ describe('Items', () => {
 
     it('does not insert duplicate', () => {
       const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
-      const updated = items.insert({ id: 1, name: 'Alice Updated' })
+      const updated = items.insert([{ id: 1, name: 'Alice Updated' }])
 
       expect(updated.getIds()).toEqual([1])
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
@@ -75,10 +75,10 @@ describe('Items', () => {
 
     it('inserts multiple entities', () => {
       const items = new Items<number, User>()
-      const updated = items.insert(
+      const updated = items.insert([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
-      )
+      ])
 
       expect(updated.getIds()).toEqual([1, 2])
       expect(updated.length).toBe(2)
@@ -86,7 +86,7 @@ describe('Items', () => {
 
     it('is immutable', () => {
       const items = new Items<number, User>()
-      const updated = items.insert({ id: 1, name: 'Alice' })
+      const updated = items.insert([{ id: 1, name: 'Alice' }])
 
       expect(items.getIds()).toEqual([])
       expect(updated.getIds()).toEqual([1])
@@ -94,42 +94,326 @@ describe('Items', () => {
 
     it('skips duplicates in batch', () => {
       const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
-      const updated = items.insert(
+      const updated = items.insert([
         { id: 1, name: 'Alice Updated' },
         { id: 2, name: 'Bob' }
-      )
+      ])
 
       expect(updated.getIds()).toEqual([1, 2])
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
+    })
+
+    it('inserts from iterable (Set)', () => {
+      const items = new Items<number, User>()
+      const usersSet = new Set([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+      const updated = items.insert(usersSet)
+
+      expect(updated.getIds()).toEqual([1, 2])
+      expect(updated.length).toBe(2)
+    })
+
+    it('maintains sort order when inserting', () => {
+      const items = new Items<number, User>(
+        [],
+        { sortComparer: (a, b) => a.name.localeCompare(b.name) }
+      )
+      const updated = items.insert([
+        { id: 3, name: 'Charlie' },
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+
+      expect(updated.getIds()).toEqual([1, 2, 3])
+    })
+
+    it('inserts into existing sorted collection', () => {
+      const items = new Items<number, User>(
+        [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
+        { sortComparer: (a, b) => a.name.localeCompare(b.name) }
+      )
+      const updated = items.insert([{ id: 2, name: 'Bob' }])
+
+      expect(updated.getIds()).toEqual([1, 2, 3])
     })
   })
 
   describe('upsert', () => {
     it('adds new entity', () => {
       const items = new Items<number, User>()
-      const updated = items.upsert({ id: 1, name: 'Alice' })
+      const updated = items.upsert([{ id: 1, name: 'Alice' }])
 
       expect(updated.getIds()).toEqual([1])
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
     })
 
-    it('replaces existing entity', () => {
+    it('merges with existing entity (extends properties)', () => {
       const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
-      const updated = items.upsert({ id: 1, name: 'Alice Updated' })
+      const updated = items.upsert([{ id: 1, name: 'Alice Updated' }])
 
-      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated' })
+      // upsert merges/extends the entity
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated', age: 25 })
     })
 
     it('upserts multiple entities', () => {
       const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
-      const updated = items.upsert(
+      const updated = items.upsert([
+        { id: 1, name: 'Alice Updated', age: 26 },
+        { id: 2, name: 'Bob' }
+      ])
+
+      expect(updated.getIds()).toEqual([1, 2])
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated', age: 26 })
+      expect(updated.select(2)).toEqual({ id: 2, name: 'Bob' })
+    })
+
+    it('upserts from iterable (Set)', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const usersSet = new Set([
+        { id: 1, name: 'Alice Updated', age: 26 },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+      const updated = items.upsert(usersSet)
+
+      expect(updated.getIds()).toEqual([1, 2])
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated', age: 26 })
+      expect(updated.select(2)).toEqual({ id: 2, name: 'Bob', age: 30 })
+    })
+
+    it('is immutable', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const updated = items.upsert([{ id: 1, name: 'Alice Updated' }])
+
+      expect(items.select(1)).toEqual({ id: 1, name: 'Alice' })
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated' })
+    })
+
+    it('maintains sort order when upserting', () => {
+      const items = new Items<number, User>(
+        [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
+        { sortComparer: (a, b) => a.name.localeCompare(b.name) }
+      )
+      const updated = items.upsert([{ id: 2, name: 'Bob' }])
+
+      expect(updated.getIds()).toEqual([1, 2, 3])
+    })
+
+    it('merges properties correctly', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const updated = items.upsert([{ id: 1, age: 26 }] as User[])
+
+      // Name is preserved, age is updated
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice', age: 26 })
+    })
+
+    it('adds new property to existing entity', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const updated = items.upsert([{ id: 1, age: 25 }] as User[])
+
+      // Both properties are present
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice', age: 25 })
+    })
+  })
+
+  describe('set', () => {
+    it('adds new entity', () => {
+      const items = new Items<number, User>()
+      const updated = items.set([{ id: 1, name: 'Alice' }])
+
+      expect(updated.getIds()).toEqual([1])
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
+    })
+
+    it('replaces existing entity completely', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const updated = items.set([{ id: 1, name: 'Alice Updated' }])
+
+      // set replaces the entire entity, so age is removed
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated' })
+      expect(updated.select(1)?.age).toBeUndefined()
+    })
+
+    it('sets multiple entities', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const updated = items.set([
         { id: 1, name: 'Alice Updated' },
         { id: 2, name: 'Bob' }
-      )
+      ])
 
       expect(updated.getIds()).toEqual([1, 2])
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated' })
       expect(updated.select(2)).toEqual({ id: 2, name: 'Bob' })
+    })
+
+    it('sets from iterable (Set)', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const usersSet = new Set([
+        { id: 1, name: 'Alice Updated' },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+      const updated = items.set(usersSet)
+
+      expect(updated.getIds()).toEqual([1, 2])
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated' })
+      expect(updated.select(1)?.age).toBeUndefined()
+      expect(updated.select(2)).toEqual({ id: 2, name: 'Bob', age: 30 })
+    })
+
+    it('is immutable', () => {
+      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const updated = items.set([{ id: 1, name: 'Alice Updated' }])
+
+      expect(items.select(1)).toEqual({ id: 1, name: 'Alice', age: 25 })
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated' })
+    })
+
+    it('maintains sort order when setting', () => {
+      const items = new Items<number, User>(
+        [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
+        { sortComparer: (a, b) => a.name.localeCompare(b.name) }
+      )
+      const updated = items.set([{ id: 2, name: 'Bob' }])
+
+      expect(updated.getIds()).toEqual([1, 2, 3])
+    })
+
+    it('removes properties not in new entity', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 }
+      ])
+      const updated = items.set([{ id: 1, name: 'Alice' }])
+
+      expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
+      expect(updated.select(1)?.age).toBeUndefined()
+    })
+  })
+
+  describe('every', () => {
+    it('returns true when all entities match condition', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      expect(items.every(user => user.age! >= 20)).toBe(true)
+    })
+
+    it('returns false when at least one entity does not match', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 15 }
+      ])
+
+      expect(items.every(user => user.age! >= 20)).toBe(false)
+    })
+
+    it('returns true for empty collection', () => {
+      const items = new Items<number, User>()
+
+      expect(items.every(user => user.age! >= 20)).toBe(true)
+    })
+
+    it('works with name matching', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+
+      expect(items.every(user => user.name.length > 0)).toBe(true)
+      expect(items.every(user => user.name.startsWith('A'))).toBe(false)
+    })
+
+    it('checks for optional properties', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      expect(items.every(user => user.age !== undefined)).toBe(true)
+    })
+
+    it('returns false when not all have optional property', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob' },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      expect(items.every(user => user.age !== undefined)).toBe(false)
+    })
+  })
+
+  describe('some', () => {
+    it('returns true when at least one entity matches', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 15 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      expect(items.some(user => user.age! < 20)).toBe(true)
+    })
+
+    it('returns false when no entities match', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      expect(items.some(user => user.age! < 20)).toBe(false)
+    })
+
+    it('returns false for empty collection', () => {
+      const items = new Items<number, User>()
+
+      expect(items.some(user => user.age! >= 20)).toBe(false)
+    })
+
+    it('works with name matching', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+
+      expect(items.some(user => user.name.startsWith('A'))).toBe(true)
+      expect(items.some(user => user.name.startsWith('Z'))).toBe(false)
+    })
+
+    it('checks for optional properties', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+        { id: 3, name: 'Charlie' }
+      ])
+
+      expect(items.some(user => user.age !== undefined)).toBe(false)
+    })
+
+    it('returns true when at least one has optional property', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie' }
+      ])
+
+      expect(items.some(user => user.age !== undefined)).toBe(true)
+    })
+
+    it('checks complex conditions', () => {
+      const items = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      expect(items.some(user => user.name === 'Bob' && user.age === 30)).toBe(true)
+      expect(items.some(user => user.name === 'Bob' && user.age === 25)).toBe(false)
     })
   })
 
@@ -311,11 +595,11 @@ describe('Items', () => {
         [],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
-      const updated = items.insert(
+      const updated = items.insert([
         { id: 3, name: 'Charlie' },
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
-      )
+      ])
 
       expect(updated.getIds()).toEqual([1, 2, 3])
     })
@@ -325,11 +609,11 @@ describe('Items', () => {
         [],
         { sortComparer: (a, b) => (b.age ?? 0) - (a.age ?? 0) }
       )
-      const updated = items.insert(
+      const updated = items.insert([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 20 }
-      )
+      ])
 
       const ages = updated.getIds().map(id => updated.select(id)!.age)
       expect(ages).toEqual([30, 25, 20])
@@ -354,11 +638,11 @@ describe('Items', () => {
         [],
         { sortComparer: false }
       )
-      const updated = items.insert(
+      const updated = items.insert([
         { id: 3, name: 'Charlie' },
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
-      )
+      ])
 
       expect(updated.getIds()).toEqual([3, 1, 2])
     })
@@ -422,7 +706,7 @@ describe('Items', () => {
   describe('diff', () => {
     it('detects added entities', () => {
       const base = new Items<number, User>([{ id: 1, name: 'Alice' }])
-      const updated = base.insert({ id: 2, name: 'Bob' })
+      const updated = base.insert([{ id: 2, name: 'Bob' }])
       const diff = updated.diff(base)
 
       expect(diff.added).toEqual([2])
@@ -454,6 +738,197 @@ describe('Items', () => {
       expect(diff.updated[0].id).toBe(1)
       expect(diff.updated[0].changes[0].key).toBe('age')
       expect(diff.updated[0].changes[0].type).toBe('changed')
+    })
+
+    it('detects multiple added entities', () => {
+      const base = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const updated = base.insert([
+        { id: 2, name: 'Bob' },
+        { id: 3, name: 'Charlie' },
+        { id: 4, name: 'Dave' }
+      ])
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([2, 3, 4])
+      expect(diff.removed).toEqual([])
+      expect(diff.updated).toEqual([])
+    })
+
+    it('detects multiple removed entities', () => {
+      const base = new Items<number, User>([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+        { id: 3, name: 'Charlie' },
+        { id: 4, name: 'Dave' }
+      ])
+      const updated = base.remove([2, 3, 4])
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([])
+      expect(diff.removed).toEqual([2, 3, 4])
+      expect(diff.updated).toEqual([])
+    })
+
+    it('detects property addition', () => {
+      const base = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const updated = base.update(1, { age: 25 })
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([])
+      expect(diff.removed).toEqual([])
+      expect(diff.updated.length).toBe(1)
+      expect(diff.updated[0].id).toBe(1)
+
+      const ageChange = diff.updated[0].changes.find(c => c.key === 'age')
+      expect(ageChange?.type).toBe('added')
+      expect(ageChange?.newValue?.value).toBe(25)
+    })
+
+    it('detects property removal', () => {
+      const base = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const updated = base.set([{ id: 1, name: 'Alice' }])
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([])
+      expect(diff.removed).toEqual([])
+      expect(diff.updated.length).toBe(1)
+
+      const ageChange = diff.updated[0].changes.find(c => c.key === 'age')
+      expect(ageChange?.type).toBe('removed')
+      expect(ageChange?.oldValue?.value).toBe(25)
+    })
+
+    it('detects property value change', () => {
+      const base = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const updated = base.update(1, { name: 'Alicia', age: 26 })
+      const diff = updated.diff(base)
+
+      expect(diff.updated.length).toBe(1)
+      expect(diff.updated[0].changes.length).toBe(2)
+
+      const nameChange = diff.updated[0].changes.find(c => c.key === 'name')
+      expect(nameChange?.type).toBe('changed')
+      expect(nameChange?.oldValue?.value).toBe('Alice')
+      expect(nameChange?.newValue?.value).toBe('Alicia')
+
+      const ageChange = diff.updated[0].changes.find(c => c.key === 'age')
+      expect(ageChange?.type).toBe('changed')
+      expect(ageChange?.oldValue?.value).toBe(25)
+      expect(ageChange?.newValue?.value).toBe(26)
+    })
+
+    it('detects combined add, remove, and update', () => {
+      const base = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      const updated = base
+        .remove(3)
+        .update(1, { age: 26 })
+        .insert([{ id: 4, name: 'Dave', age: 40 }])
+
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([4])
+      expect(diff.removed).toEqual([3])
+      expect(diff.updated.length).toBe(1)
+      expect(diff.updated[0].id).toBe(1)
+    })
+
+    it('detects no changes for identical collections', () => {
+      const base = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+      const updated = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([])
+      expect(diff.removed).toEqual([])
+      expect(diff.updated).toEqual([])
+    })
+
+    it('detects changes in nested objects', () => {
+      interface UserWithAddress {
+        id: number
+        name: string
+        address: { city: string; country: string }
+      }
+
+      const base = new Items<number, UserWithAddress>([
+        { id: 1, name: 'Alice', address: { city: 'NYC', country: 'USA' } }
+      ])
+
+      const updated = base.update(1, {
+        address: { city: 'LA', country: 'USA' }
+      })
+
+      const diff = updated.diff(base)
+
+      expect(diff.updated.length).toBe(1)
+      expect(diff.updated[0].id).toBe(1)
+
+      // ohash detects nested changes with multiple change objects for nested properties
+      expect(diff.updated[0].changes.length).toBeGreaterThan(0)
+    })
+
+    it('handles empty base collection', () => {
+      const base = new Items<number, User>()
+      const updated = base.insert([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([1, 2])
+      expect(diff.removed).toEqual([])
+      expect(diff.updated).toEqual([])
+    })
+
+    it('handles empty updated collection', () => {
+      const base = new Items<number, User>([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+      const updated = base.clear()
+
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([])
+      expect(diff.removed).toEqual([1, 2])
+      expect(diff.updated).toEqual([])
+    })
+
+    it('detects multiple property changes on multiple entities', () => {
+      const base = new Items<number, User>([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+
+      const updated = base
+        .update(1, { age: 26 })
+        .update(2, { name: 'Robert', age: 31 })
+
+      const diff = updated.diff(base)
+
+      expect(diff.added).toEqual([])
+      expect(diff.removed).toEqual([])
+      expect(diff.updated.length).toBe(2)
+
+      const user1Update = diff.updated.find(u => u.id === 1)
+      expect(user1Update?.changes.length).toBe(1)
+      expect(user1Update?.changes[0].key).toBe('age')
+
+      const user2Update = diff.updated.find(u => u.id === 2)
+      expect(user2Update?.changes.length).toBe(2)
     })
   })
 
@@ -492,10 +967,10 @@ describe('Items', () => {
         [],
         { selectId: (book) => book.isbn }
       )
-      const updated = items.insert(
+      const updated = items.insert([
         { isbn: '978-0-1', title: 'Book A', year: 2020 },
         { isbn: '978-0-2', title: 'Book B', year: 2021 }
-      )
+      ])
 
       expect(updated.getIds()).toEqual(['978-0-1', '978-0-2'])
       expect(updated.select('978-0-1')?.title).toBe('Book A')
@@ -509,11 +984,11 @@ describe('Items', () => {
           sortComparer: (a, b) => a.year - b.year
         }
       )
-      const updated = items.insert(
+      const updated = items.insert([
         { isbn: '978-0-3', title: 'Book C', year: 2022 },
         { isbn: '978-0-1', title: 'Book A', year: 2020 },
         { isbn: '978-0-2', title: 'Book B', year: 2021 }
-      )
+      ])
 
       const years = updated.getIds().map(id => updated.select(id)!.year)
       expect(years).toEqual([2020, 2021, 2022])
