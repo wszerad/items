@@ -1,5 +1,7 @@
-export type SelectId<I, E> = (entity: E) => I
+export type Idable = string | number
 
-export function defaultSelectId<I, E extends { id: I }>(entity: E) {
+export type SelectId<E, I extends Idable> = (entity: E) => I
+
+export function defaultSelectId<E extends { id: I }, I = E['id']>(entity: E) {
   return entity.id
 }

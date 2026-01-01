@@ -1,6 +1,6 @@
 export type UpdateFn<E> = (entity: E) => E
-export type Updater<I, E> = UpdateFn<E> | Partial<E>
+export type Updater<E, I> = UpdateFn<E> | Partial<E>
 
-export function update<I, E>(entity: E, updater: Updater<I, E>) {
+export function update<E, I>(entity: E, updater: Updater<E, I>) {
   return { ...entity, ...(typeof updater === 'function' ? updater(entity) : updater) }
 }

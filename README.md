@@ -4,7 +4,7 @@ Lightweight, immutable collection manager inspired by NgRx Entity Adapter.
 
 ## Features
 
-- ✅ Immutable operations (insert/insertMany, upsert/upsertMany, set/setMany, update, remove, filter, etc.)
+- ✅ Immutable operations (insert/insertMany, upsert/upsertMany, set/setMany, update, remove/removeMany, filter, etc.)
 - ✅ Single entity and batch operations
 - ✅ Custom ID selection (`selectId`)
 - ✅ Optional sorting (`sortComparer`)
@@ -19,7 +19,7 @@ Lightweight, immutable collection manager inspired by NgRx Entity Adapter.
 ## Installation
 
 ```bash
-npm install items
+npm install @wszerad/items
 ```
 
 ## Quick Start
@@ -722,40 +722,45 @@ users = users.setMany([
 ### Checking Entity Existence
 
 ```typescript
-import { Items } from 'items'
+interface Product {
+  sku: string
+  name: string
+  price: number
+}
 
-const users = new Items<number, User>([
-  { id: 1, name: 'Alice', age: 25 },
-  { id: 2, name: 'Bob', age: 30 },
-  { id: 3, name: 'Charlie', age: 35 }
+const products = new Items<string, Product>([], {
+  selectId: (product) => product.sku
+})
+
+const updated = products.insert([
+  { sku: 'ABC-123', name: 'Widget', price: 19.99 }
 ])
 
-// Check single entity exists
-if (users.has(1)) {
-  console.log('User 1 exists')
-}
+console.log(updated.select('ABC-123'))
+```
 
-if (!users.has(99)) {
-  console.log('User 99 does not exist')
-}
+### With Sorting
 
-// Check multiple entities exist (ALL must exist)
-if (users.hasMany([1, 2])) {
-  console.log('Users 1 and 2 both exist')
-}
+```typescript
+const items = new Items<number, User>(
+  [
+    { id: 3, name: 'Charlie', age: 35 },
+    { id: 1, name: 'Alice', age: 25 },
+    { id: 2, name: 'Bob', age: 30 }
+  ],
+  { sortComparer: (a, b) => a.name.localeCompare(b.name) }
+)
 
-if (!users.hasMany([1, 99])) {
-  console.log('Not all users exist')
-}
+console.log(items.getIds()) // [1, 2, 3] - sorted by name
+```
 
-// Check if any entity matches condition
-if (users.hasMany(user => user.age >= 30)) {
-  console.log('At least one user is 30 or older')
-}
+---
 
-// Use with conditionals
-const userExists = users.has(1)
-const allExist = users.hasMany([1, 2, 3])
-const hasAdults = users.hasMany(user => user.age >= 18)
+## Development
 
-// Combine with ot
+### Scripts
+
+- `npm test` – runs tests (Vitest)
+- `npm run test:watch` – watch mode
+- `npm run build` – typecheck + bundling (tsc + tsdown)
+- `npm run typecheck` – TypeScript type checking (

@@ -1,13 +1,13 @@
 import { Items } from './Items'
 
-export type SelectorFn<I, E> = (entity: E) => boolean
-export type Selector<I, E> = Iterable<I> | SelectorFn<I, E>
-export type Operation<I, E> = (entity: E | undefined, id: I) => void
+export type SelectorFn<E, I> = (entity: E) => boolean
+export type Selector<E, I> = Iterable<I> | SelectorFn<E, I>
+export type Operation<E, I> = (entity: E | undefined, id: I) => void
 
-export function selector<I, E>(items: Items<I, E>, selector: Selector<I, E>, operation: Operation<I, E>) {
+export function selector<E, I>(items: Items<E, I>, selector: Selector<E, I>, operation: Operation<E, I>) {
   if (typeof selector === 'function') {
     items.getEntities().forEach((entity, id) => {
-      if ((selector as SelectorFn<I, E>)(entity)) {
+      if ((selector as SelectorFn<E, I>)(entity)) {
         operation(entity, id)
       }
     })

@@ -1,25 +1,28 @@
-import { defaultSelectId, SelectId } from './selectId'
+import { defaultSelectId, Idable, SelectId } from './selectId'
 import { selector, Selector, SelectorFn } from './selector'
 import { Updater } from './updater'
 import { itemsDiff } from './diff'
 import { update } from './updater'
 
-export interface ItemsOptions<I, E> {
-  selectId?: SelectId<I, E>
+export interface ItemsOptions<E, I extends Idable> {
+  selectId?: SelectId<E, I>
   sortComparer?: false | ((a: E, b: E) => number)
 }
 
-export interface ItemsState<I, E> {
+export interface ItemsState<E, I> {
   ids: I[]
   entities: Map<I, E>
 }
 
-export class Items<I, E> {
-  private state: ItemsState<I, E>
+export class Items<E, I extends Idable> {
+  private state: ItemsState<E, I>
 
+  // constructor(items: Iterable<E>): I is E['id']
   constructor(
     items: Iterable<E> = [],
-    private options: ItemsOptions<I, E> = {}
+    private options: ItemsOptions<E, I> = {
+      selectId: defaultSelectId
+    }
   ) {
     const entities = new Map(
       Array
@@ -92,11 +95,11 @@ export class Items<I, E> {
     ], this.options)
   }
 
-  every(check: SelectorFn<I, E>) {
+  every(check: SelectorFn<E, I>) {
     return this.getIds().every(id => check(this.select(id)!))
   }
 
-  some(check: SelectorFn<I, E>) {
+  some(check: SelectorFn<E, I>) {
     return this.getIds().some(id => check(this.select(id)!))
   }
 
@@ -104,7 +107,7 @@ export class Items<I, E> {
     return this.state.ids.includes(id)
   }
 
-  hasMany(select: Selector<I, E>) {
+  hasMany(select: Selector<E, I>) {
     let failToFind = false
     let result = false
     selector(this, select, (entity) => {
@@ -117,7 +120,7 @@ export class Items<I, E> {
     return !failToFind && result
   }
 
-  update(id: I, updater: Updater<I, E>) {
+  update(id: I, updater: Updater<E, I>) {
     const entity = this.select(id)
     if (!entity) {
       return this
@@ -127,7 +130,7 @@ export class Items<I, E> {
     return new Items(clone.values(), this.options)
   }
 
-  updateMany(select: Selector<I, E>, updater: Updater<I, E>) {
+  updateMany(select: Selector<E, I>, updater: Updater<E, I>) {
     const clone = this.getEntities()
     selector(this, select, (entity, id) => {
       if (entity) {
@@ -143,7 +146,7 @@ export class Items<I, E> {
     return new Items(clone.values(), this.options)
   }
 
-  removeMany(select: Selector<I, E>) {
+  removeMany(select: Selector<E, I>) {
     const clone = this.getEntities()
     selector(this, select, (_, id) => {
       clone.delete(id)
@@ -151,11 +154,11 @@ export class Items<I, E> {
     return new Items(clone.values(), this.options)
   }
 
-  clear(): Items<I, E> {
+  clear(): Items<E, I> {
     return new Items([], this.options)
   }
 
-  filter(select: Selector<I, E>) {
+  filter(select: Selector<E, I>) {
     const clone = new Map<I, E>()
 
     selector(this, select, (entity, id) => {
@@ -182,7 +185,7 @@ export class Items<I, E> {
     }
   }
 
-  diff(base: Items<I, E>) {
+  diff(base: Items<E, I>) {
     return itemsDiff(base, this)
   }
 
