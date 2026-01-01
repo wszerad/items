@@ -17,7 +17,7 @@ interface Book {
 describe('Items', () => {
   describe('initialization', () => {
     it('creates empty collection', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       expect(items.getIds()).toEqual([])
       expect(items.getEntities()).toEqual(new Map())
       expect(items.length).toBe(0)
@@ -28,14 +28,14 @@ describe('Items', () => {
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ]
-      const items = new Items<number, User>(users)
+      const items = new Items(users)
       expect(items.getIds()).toEqual([1, 2])
       expect(items.length).toBe(2)
       expect(items.select(1)).toEqual({ id: 1, name: 'Alice' })
     })
 
     it('uses custom selectId', () => {
-      const items = new Items<string, Book>(
+      const items = new Items<Book>(
         [],
         { selectId: (book) => book.isbn }
       )
@@ -44,7 +44,7 @@ describe('Items', () => {
     })
 
     it('applies sortComparer on initialization', () => {
-      const items = new Items<number, User>(
+      const items = new Items(
         [
           { id: 2, name: 'Bob' },
           { id: 1, name: 'Alice' }
@@ -57,7 +57,7 @@ describe('Items', () => {
 
   describe('insert', () => {
     it('inserts single entity', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       const updated = items.insert({ id: 1, name: 'Alice' })
 
       expect(updated.getIds()).toEqual([1])
@@ -66,7 +66,7 @@ describe('Items', () => {
     })
 
     it('does not insert duplicate', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items([{ id: 1, name: 'Alice' }])
       const updated = items.insert({ id: 1, name: 'Alice Updated' })
 
       expect(updated.getIds()).toEqual([1])
@@ -74,7 +74,7 @@ describe('Items', () => {
     })
 
     it('is immutable', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       const updated = items.insert({ id: 1, name: 'Alice' })
 
       expect(items.getIds()).toEqual([])
@@ -84,7 +84,7 @@ describe('Items', () => {
 
   describe('insertMany', () => {
     it('inserts multiple entities', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       const updated = items.insertMany([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
@@ -95,7 +95,7 @@ describe('Items', () => {
     })
 
     it('skips duplicates in batch', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items([{ id: 1, name: 'Alice' }])
       const updated = items.insertMany([
         { id: 1, name: 'Alice Updated' },
         { id: 2, name: 'Bob' }
@@ -106,7 +106,7 @@ describe('Items', () => {
     })
 
     it('inserts from iterable (Set)', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       const usersSet = new Set([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
@@ -118,7 +118,7 @@ describe('Items', () => {
     })
 
     it('maintains sort order when inserting', () => {
-      const items = new Items<number, User>(
+      const items = new Items<User>(
         [],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
@@ -132,7 +132,7 @@ describe('Items', () => {
     })
 
     it('inserts into existing sorted collection', () => {
-      const items = new Items<number, User>(
+      const items = new Items(
         [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
@@ -144,7 +144,7 @@ describe('Items', () => {
 
   describe('upsert', () => {
     it('adds new entity', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       const updated = items.upsert({ id: 1, name: 'Alice' })
 
       expect(updated.getIds()).toEqual([1])
@@ -152,15 +152,15 @@ describe('Items', () => {
     })
 
     it('merges with existing entity (extends properties)', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
-      const updated = items.upsert({ id: 1, name: 'Alice Updated' } as User)
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 } as User])
+      const updated = items.upsert({ id: 1, name: 'Alice Updated' })
 
       // upsert merges/extends the entity
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice Updated', age: 25 })
     })
 
     it('is immutable', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items([{ id: 1, name: 'Alice' }])
       const updated = items.upsert({ id: 1, name: 'Alice Updated' } as User)
 
       expect(items.select(1)).toEqual({ id: 1, name: 'Alice' })
@@ -168,7 +168,7 @@ describe('Items', () => {
     })
 
     it('adds new property to existing entity', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items([{ id: 1, name: 'Alice' }])
       const updated = items.upsert({ id: 1, age: 25 } as User)
 
       // Both properties are present
@@ -178,7 +178,7 @@ describe('Items', () => {
 
   describe('upsertMany', () => {
     it('upserts multiple entities', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items<User>([{ id: 1, name: 'Alice' }])
       const updated = items.upsertMany([
         { id: 1, name: 'Alice Updated', age: 26 },
         { id: 2, name: 'Bob' }
@@ -190,8 +190,8 @@ describe('Items', () => {
     })
 
     it('upserts from iterable (Set)', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
-      const usersSet = new Set([
+      const items = new Items<User>([{ id: 1, name: 'Alice' }])
+      const usersSet = new Set<Partial<User>>([
         { id: 1, name: 'Alice Updated', age: 26 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -203,7 +203,7 @@ describe('Items', () => {
     })
 
     it('maintains sort order when upserting', () => {
-      const items = new Items<number, User>(
+      const items = new Items(
         [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
@@ -213,8 +213,8 @@ describe('Items', () => {
     })
 
     it('merges properties correctly', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
-      const updated = items.upsertMany([{ id: 1, age: 26 }] as User[])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 } as User])
+      const updated = items.upsertMany([{ id: 1, age: 26 }])
 
       // Name is preserved, age is updated
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice', age: 26 })
@@ -223,7 +223,7 @@ describe('Items', () => {
 
   describe('set', () => {
     it('adds new entity', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
       const updated = items.set({ id: 1, name: 'Alice' })
 
       expect(updated.getIds()).toEqual([1])
@@ -231,7 +231,7 @@ describe('Items', () => {
     })
 
     it('replaces existing entity completely', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 } as User])
       const updated = items.set({ id: 1, name: 'Alice Updated' })
 
       // set replaces the entire entity, so age is removed
@@ -240,7 +240,7 @@ describe('Items', () => {
     })
 
     it('is immutable', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 } as User])
       const updated = items.set({ id: 1, name: 'Alice Updated' })
 
       expect(items.select(1)).toEqual({ id: 1, name: 'Alice', age: 25 })
@@ -248,8 +248,8 @@ describe('Items', () => {
     })
 
     it('removes properties not in new entity', () => {
-      const items = new Items<number, User>([
-        { id: 1, name: 'Alice', age: 25 }
+      const items = new Items([
+        { id: 1, name: 'Alice', age: 25 } as User
       ])
       const updated = items.set({ id: 1, name: 'Alice' })
 
@@ -260,7 +260,7 @@ describe('Items', () => {
 
   describe('setMany', () => {
     it('sets multiple entities', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 } as User])
       const updated = items.setMany([
         { id: 1, name: 'Alice Updated' },
         { id: 2, name: 'Bob' }
@@ -272,8 +272,8 @@ describe('Items', () => {
     })
 
     it('sets from iterable (Set)', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
-      const usersSet = new Set([
+      const items = new Items<User>([{ id: 1, name: 'Alice', age: 25 }])
+      const usersSet = new Set<User>([
         { id: 1, name: 'Alice Updated' },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -286,7 +286,7 @@ describe('Items', () => {
     })
 
     it('maintains sort order when setting', () => {
-      const items = new Items<number, User>(
+      const items = new Items(
         [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
@@ -298,7 +298,7 @@ describe('Items', () => {
 
   describe('every', () => {
     it('returns true when all entities match condition', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -308,7 +308,7 @@ describe('Items', () => {
     })
 
     it('returns false when at least one entity does not match', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 15 }
@@ -318,13 +318,13 @@ describe('Items', () => {
     })
 
     it('returns true for empty collection', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
 
       expect(items.every(user => user.age! >= 20)).toBe(true)
     })
 
     it('works with name matching', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -334,7 +334,7 @@ describe('Items', () => {
     })
 
     it('checks for optional properties', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -344,7 +344,7 @@ describe('Items', () => {
     })
 
     it('returns false when not all have optional property', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie', age: 35 }
@@ -356,7 +356,7 @@ describe('Items', () => {
 
   describe('some', () => {
     it('returns true when at least one entity matches', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 15 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -366,7 +366,7 @@ describe('Items', () => {
     })
 
     it('returns false when no entities match', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -376,13 +376,13 @@ describe('Items', () => {
     })
 
     it('returns false for empty collection', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
 
       expect(items.some(user => user.age! >= 20)).toBe(false)
     })
 
     it('works with name matching', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -392,7 +392,7 @@ describe('Items', () => {
     })
 
     it('checks for optional properties', () => {
-      const items = new Items<number, User>([
+      const items = new Items<User>([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' }
@@ -402,7 +402,7 @@ describe('Items', () => {
     })
 
     it('returns true when at least one has optional property', () => {
-      const items = new Items<number, User>([
+      const items = new Items<User>([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie' }
@@ -412,7 +412,7 @@ describe('Items', () => {
     })
 
     it('checks complex conditions', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -425,7 +425,7 @@ describe('Items', () => {
 
   describe('has', () => {
     it('checks if entity exists by single id', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -437,14 +437,14 @@ describe('Items', () => {
     })
 
     it('returns false for non-existent id', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items([{ id: 1, name: 'Alice' }])
 
       expect(items.has(1)).toBe(true)
       expect(items.has(2)).toBe(false)
     })
 
     it('works with empty collection', () => {
-      const items = new Items<number, User>()
+      const items = new Items<User>()
 
       expect(items.has(1)).toBe(false)
     })
@@ -452,7 +452,7 @@ describe('Items', () => {
 
   describe('hasMany', () => {
     it('checks if all entities exist by ids', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -464,7 +464,7 @@ describe('Items', () => {
     })
 
     it('checks if entity exists by predicate', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 }
       ])
 
@@ -473,7 +473,7 @@ describe('Items', () => {
     })
 
     it('returns false when no entities match predicate', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -482,7 +482,7 @@ describe('Items', () => {
     })
 
     it('returns true when all ids exist', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' }
@@ -492,7 +492,7 @@ describe('Items', () => {
     })
 
     it('works with empty array', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' }
       ])
 
@@ -502,28 +502,28 @@ describe('Items', () => {
 
   describe('update', () => {
     it('updates entity by id with partial', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
       const updated = items.update(1, { age: 26 })
 
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice', age: 26 })
     })
 
     it('updates entity by id with function', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
       const updated = items.update(1, user => ({ ...user, age: user.age! + 1 }))
 
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice', age: 26 })
     })
 
     it('partial update preserves other fields', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
       const updated = items.update(1, { name: 'Alicia' })
 
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alicia', age: 25 })
     })
 
     it('returns same instance if entity does not exist', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
       const updated = items.update(99, { age: 26 })
 
       expect(updated).toBe(items)
@@ -532,7 +532,7 @@ describe('Items', () => {
 
   describe('updateMany', () => {
     it('updates multiple entities by ids', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -543,7 +543,7 @@ describe('Items', () => {
     })
 
     it('updates entities by predicate', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -557,7 +557,7 @@ describe('Items', () => {
     })
 
     it('partial update preserves other fields', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -570,7 +570,7 @@ describe('Items', () => {
 
   describe('remove', () => {
     it('removes entity by id', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -582,7 +582,7 @@ describe('Items', () => {
     })
 
     it('is immutable', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -593,7 +593,7 @@ describe('Items', () => {
     })
 
     it('removes non-existent entity without error', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' }
       ])
       const updated = items.remove(99)
@@ -604,7 +604,7 @@ describe('Items', () => {
 
   describe('removeMany', () => {
     it('removes multiple entities by ids', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' }
@@ -616,7 +616,7 @@ describe('Items', () => {
     })
 
     it('removes entities by predicate', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 20 }
@@ -629,7 +629,7 @@ describe('Items', () => {
 
   describe('clear', () => {
     it('clears collection', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -643,7 +643,7 @@ describe('Items', () => {
 
   describe('filter', () => {
     it('filters by ids', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' }
@@ -654,7 +654,7 @@ describe('Items', () => {
     })
 
     it('filters by single id in array', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' }
@@ -666,7 +666,7 @@ describe('Items', () => {
     })
 
     it('filters by predicate', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 20 }
@@ -679,7 +679,7 @@ describe('Items', () => {
 
   describe('select', () => {
     it('selects entity by id', () => {
-      const items = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const items = new Items([{ id: 1, name: 'Alice' }])
 
       expect(items.select(1)).toEqual({ id: 1, name: 'Alice' })
       expect(items.select(2)).toBeUndefined()
@@ -688,7 +688,7 @@ describe('Items', () => {
 
   describe('sortComparer', () => {
     it('sorts by name ascending', () => {
-      const items = new Items<number, User>(
+      const items = new Items<User>(
         [],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
@@ -702,7 +702,7 @@ describe('Items', () => {
     })
 
     it('sorts by age descending', () => {
-      const items = new Items<number, User>(
+      const items = new Items<User>(
         [],
         { sortComparer: (a, b) => (b.age ?? 0) - (a.age ?? 0) }
       )
@@ -717,7 +717,7 @@ describe('Items', () => {
     })
 
     it('re-sorts after update', () => {
-      const items = new Items<number, User>(
+      const items = new Items(
         [
           { id: 1, name: 'Alice', age: 25 },
           { id: 2, name: 'Bob', age: 30 }
@@ -731,7 +731,7 @@ describe('Items', () => {
     })
 
     it('sortComparer: false disables sorting', () => {
-      const items = new Items<number, User>(
+      const items = new Items<User>(
         [],
         { sortComparer: false }
       )
@@ -747,7 +747,7 @@ describe('Items', () => {
 
   describe('page', () => {
     it('returns first page', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' },
@@ -769,7 +769,7 @@ describe('Items', () => {
     })
 
     it('returns middle page', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' },
@@ -787,7 +787,7 @@ describe('Items', () => {
     })
 
     it('returns last page', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' }
@@ -802,7 +802,7 @@ describe('Items', () => {
 
   describe('diff', () => {
     it('detects added entities', () => {
-      const base = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const base = new Items([{ id: 1, name: 'Alice' }])
       const updated = base.insert({ id: 2, name: 'Bob' })
       const diff = updated.diff(base)
 
@@ -812,7 +812,7 @@ describe('Items', () => {
     })
 
     it('detects removed entities', () => {
-      const base = new Items<number, User>([
+      const base = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -825,7 +825,7 @@ describe('Items', () => {
     })
 
     it('detects updated entities', () => {
-      const base = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const base = new Items([{ id: 1, name: 'Alice', age: 25 }])
       const updated = base.update(1, { age: 26 })
       const diff = updated.diff(base)
 
@@ -838,7 +838,7 @@ describe('Items', () => {
     })
 
     it('detects multiple added entities', () => {
-      const base = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const base = new Items([{ id: 1, name: 'Alice' }])
       const updated = base.insertMany([
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' },
@@ -852,7 +852,7 @@ describe('Items', () => {
     })
 
     it('detects multiple removed entities', () => {
-      const base = new Items<number, User>([
+      const base = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' },
         { id: 3, name: 'Charlie' },
@@ -867,7 +867,7 @@ describe('Items', () => {
     })
 
     it('detects property addition', () => {
-      const base = new Items<number, User>([{ id: 1, name: 'Alice' }])
+      const base = new Items<User>([{ id: 1, name: 'Alice' }])
       const updated = base.update(1, { age: 25 })
       const diff = updated.diff(base)
 
@@ -882,7 +882,7 @@ describe('Items', () => {
     })
 
     it('detects property removal', () => {
-      const base = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const base = new Items<User>([{ id: 1, name: 'Alice', age: 25 }])
       const updated = base.set({ id: 1, name: 'Alice' })
       const diff = updated.diff(base)
 
@@ -896,7 +896,7 @@ describe('Items', () => {
     })
 
     it('detects property value change', () => {
-      const base = new Items<number, User>([{ id: 1, name: 'Alice', age: 25 }])
+      const base = new Items([{ id: 1, name: 'Alice', age: 25 }])
       const updated = base.update(1, { name: 'Alicia', age: 26 })
       const diff = updated.diff(base)
 
@@ -915,7 +915,7 @@ describe('Items', () => {
     })
 
     it('detects combined add, remove, and update', () => {
-      const base = new Items<number, User>([
+      const base = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -935,11 +935,11 @@ describe('Items', () => {
     })
 
     it('detects no changes for identical collections', () => {
-      const base = new Items<number, User>([
+      const base = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
-      const updated = new Items<number, User>([
+      const updated = new Items([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
@@ -952,13 +952,13 @@ describe('Items', () => {
     })
 
     it('detects changes in nested objects', () => {
-      interface UserWithAddress {
+      type UserWithAddress = {
         id: number
         name: string
         address: { city: string; country: string }
       }
 
-      const base = new Items<number, UserWithAddress>([
+      const base = new Items<UserWithAddress>([
         { id: 1, name: 'Alice', address: { city: 'NYC', country: 'USA' } }
       ])
 
@@ -976,7 +976,7 @@ describe('Items', () => {
     })
 
     it('handles empty base collection', () => {
-      const base = new Items<number, User>()
+      const base = new Items<User>()
       const updated = base.insertMany([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
@@ -990,7 +990,7 @@ describe('Items', () => {
     })
 
     it('handles empty updated collection', () => {
-      const base = new Items<number, User>([
+      const base = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -1004,7 +1004,7 @@ describe('Items', () => {
     })
 
     it('detects multiple property changes on multiple entities', () => {
-      const base = new Items<number, User>([
+      const base = new Items<User>([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -1031,7 +1031,7 @@ describe('Items', () => {
 
   describe('iteration', () => {
     it('iterates over entities', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -1045,7 +1045,7 @@ describe('Items', () => {
     })
 
     it('works with spread operator', () => {
-      const items = new Items<number, User>([
+      const items = new Items([
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ])
@@ -1060,7 +1060,7 @@ describe('Items', () => {
 
   describe('custom selectId with Books', () => {
     it('works with string IDs', () => {
-      const items = new Items<string, Book>(
+      const items = new Items<Book>(
         [],
         { selectId: (book) => book.isbn }
       )
@@ -1074,7 +1074,7 @@ describe('Items', () => {
     })
 
     it('sorts books by year', () => {
-      const items = new Items<string, Book>(
+      const items = new Items<Book>(
         [],
         {
           selectId: (book) => book.isbn,

@@ -4,10 +4,17 @@ import { Updater } from './updater'
 import { itemsDiff } from './diff'
 import { update } from './updater'
 
-export interface ItemsOptions<E, I extends Idable> {
-  selectId?: SelectId<E, I>
+export interface ItemsOptionsWithSelectId<E, I extends Idable> {
+  selectId: SelectId<E, I>
   sortComparer?: false | ((a: E, b: E) => number)
 }
+
+export interface ItemsOptionsWithoutSelectId<E> {
+  selectId?: undefined
+  sortComparer?: false | ((a: E, b: E) => number)
+}
+
+export type ItemsOptions<E, I extends Idable> = ItemsOptionsWithSelectId<E, I> | ItemsOptionsWithoutSelectId<E>
 
 export interface ItemsState<E, I> {
   ids: I[]
@@ -16,14 +23,15 @@ export interface ItemsState<E, I> {
 
 export class Items<E, I extends Idable> {
   private state: ItemsState<E, I>
+  private options: ItemsOptions<E, I>
 
-  // constructor(items: Iterable<E>): I is E['id']
+  constructor(items: Iterable<E>, options: ItemsOptionsWithSelectId<E, I>)
+  constructor(items?: Iterable<E>, options?: ItemsOptionsWithoutSelectId<E>)
   constructor(
     items: Iterable<E> = [],
-    private options: ItemsOptions<E, I> = {
-      selectId: defaultSelectId
-    }
+    options: ItemsOptions<E, I> = {} as ItemsOptions<E, I>
   ) {
+    this.options = options
     const entities = new Map(
       Array
         .from(items)
@@ -60,28 +68,28 @@ export class Items<E, I extends Idable> {
   }
 
   insertMany(entities: Iterable<E>) {
-    return new Items([
+    return new Items<E, I>([
       ...this,
       ...Array.from(entities).filter(entity => !this.has(this.selectId(entity)))
-    ], this.options)
+    ], this.options as any)
   }
 
-  upsert(entity: E) {
+  upsert(entity: Partial<E>) {
     return this.upsertMany([entity])
   }
 
-  upsertMany(entities: Iterable<E>) {
+  upsertMany(entities: Iterable<Partial<E>>) {
     const clone = this.getEntities()
     Array.from(entities).forEach(entity => {
-      const id = this.selectId(entity)
+      const id = this.selectId(entity as E)
       const existing = clone.get(id)
       if (existing) {
-        clone.set(id, { ...existing, ...entity })
+        clone.set(id, { ...existing, ...entity } as E)
       } else {
-        clone.set(id, entity)
+        clone.set(id, entity as E)
       }
     })
-    return new Items(clone.values(), this.options)
+    return new Items<E, I>(clone.values(), this.options as any)
   }
 
   set(entity: E) {
@@ -89,10 +97,10 @@ export class Items<E, I extends Idable> {
   }
 
   setMany(entities: Iterable<E>) {
-    return new Items([
+    return new Items<E, I>([
       ...this,
       ...entities
-    ], this.options)
+    ], this.options as any)
   }
 
   every(check: SelectorFn<E, I>) {
@@ -127,7 +135,7 @@ export class Items<E, I extends Idable> {
     }
     const clone = this.getEntities()
     clone.set(id, update(entity, updater))
-    return new Items(clone.values(), this.options)
+    return new Items<E, I>(clone.values(), this.options as any)
   }
 
   updateMany(select: Selector<E, I>, updater: Updater<E, I>) {
@@ -137,13 +145,13 @@ export class Items<E, I extends Idable> {
         clone.set(id, update(entity, updater))
       }
     })
-    return new Items(clone.values(), this.options)
+    return new Items<E, I>(clone.values(), this.options as any)
   }
 
   remove(id: I) {
     const clone = this.getEntities()
     clone.delete(id)
-    return new Items(clone.values(), this.options)
+    return new Items<E, I>(clone.values(), this.options as any)
   }
 
   removeMany(select: Selector<E, I>) {
@@ -151,11 +159,11 @@ export class Items<E, I extends Idable> {
     selector(this, select, (_, id) => {
       clone.delete(id)
     })
-    return new Items(clone.values(), this.options)
+    return new Items<E, I>(clone.values(), this.options as any)
   }
 
-  clear(): Items<E, I> {
-    return new Items([], this.options)
+  clear() {
+    return new Items<E, I>([], this.options as any)
   }
 
   filter(select: Selector<E, I>) {
@@ -167,7 +175,7 @@ export class Items<E, I extends Idable> {
       }
     })
 
-    return new Items(clone.values(), this.options)
+    return new Items<E, I>(clone.values(), this.options as any)
   }
 
   page(page: number, pageSize: number) {
