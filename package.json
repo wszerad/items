@@ -1,6 +1,6 @@
 {
   "name": "@wszerad/items",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
@@ -38,7 +38,9 @@
   },
   "keywords": [
     "array",
-    "diff"
+    "diff",
+    "ohash",
+    "immutable"
   ],
   "author": "Wszerad Martynowski",
   "repository": {
