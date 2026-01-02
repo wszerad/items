@@ -1,24 +1,13 @@
-import { diff } from 'ohash/utils'
+import type { ItemId } from './types'
 import { Items } from './Items'
-import { StrOrNum } from './selectId'
+import { diff} from 'ohash/utils'
 
-export interface ItemDiff<I> {
-  id: I
-  changes: ReturnType<typeof diff>
-}
-
-export interface ItemsDiff<I> {
-  added: I[]
-  removed: I[]
-  updated: ItemDiff<I>[]
-}
-
-export function itemsDiff<E, I extends StrOrNum>(fromItems: Items<E, I>, toItems: Items<E, I>): ItemsDiff<I> {
+export function itemsDiff<E>(fromItems: Items<E>, toItems: Items<E>) {
   const ids = new Set(toItems.getIds())
   const baseIds = new Set(fromItems.getIds())
 
-  const added: I[] = []
-  const updated: ItemDiff<I>[] = []
+  const added: ItemId[] = []
+  const updated: any[] = []
 
   ids.forEach(id => {
     if (!baseIds.has(id)) {
