@@ -1,5 +1,5 @@
 import { defaultSelectId, SelectId, StrOrNum } from './selectId'
-import { selector, Selector, SelectorFn } from './selector'
+import { selector, Selector, SelectorFn, selectorSingle } from './selector'
 import { Updater } from './updater'
 import { itemsDiff } from './diff'
 import { update } from './updater'
@@ -167,6 +167,10 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     return new Items<E, I>(clone.values(), this.options)
   }
 
+  find(select: Selector<E, I>) {
+    return selectorSingle(this, select)
+  }
+
   page(page: number, pageSize: number) {
     const totalPages = Math.ceil(this.length / pageSize)
     return {
@@ -201,7 +205,7 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     })
   }
 
-  private selectId(entity: E): I {
+  selectId(entity: E): I {
     return this.options?.selectId?.(entity) as undefined || defaultSelectId(entity as E & { id: I })
   }
 

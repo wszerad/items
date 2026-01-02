@@ -223,9 +223,6 @@ items.clear()
 - **`filter(selector)`** – Returns new collection with only matching entities
 
 ```typescript
-// Filter by ID
-items.filter(1)
-
 // Filter by multiple IDs
 items.filter([1, 2])
 
@@ -233,16 +230,50 @@ items.filter([1, 2])
 items.filter(user => user.age >= 30)
 ```
 
+- **`find(selector)`** – Returns the first entity matching the selector or `undefined`
+
+```typescript
+// Find by predicate
+const user = items.find(user => user.age === 30)
+// Returns: { id: 2, name: 'Bob', age: 30 } or undefined
+
+// Find by single ID in array
+const user = items.find([2])
+// Returns: { id: 2, name: 'Bob', age: 30 } or undefined
+
+// Find first match when multiple entities match
+const user = items.find(user => user.age >= 25)
+// Returns the first entity with age >= 25
+
+// Complex predicate
+const user = items.find(user => user.name.startsWith('A') && user.age > 20)
+
+// Returns undefined when no match found
+const notFound = items.find(user => user.age === 999) // undefined
+```
+
 #### Selectors
 
 - **`getIds()`** – Returns array of IDs
 - **`getEntities()`** – Returns Map of entities
 - **`select(id)`** – Returns entity by ID or `undefined`
+- **`selectId(entity)`** – Returns the ID of an entity using the configured `selectId` function
 
 ```typescript
 items.getIds() // [1, 2]
 items.getEntities() // Map { 1 => {...}, 2 => {...} }
 items.select(1) // { id: 1, name: 'Alice' }
+
+// Get ID from entity
+const user = { id: 1, name: 'Alice' }
+items.selectId(user) // 1
+
+// With custom selectId
+const books = new Items<string, Book>([], {
+  selectId: (book) => book.isbn
+})
+const book = { isbn: '978-0-123', title: 'Example Book', year: 2020 }
+books.selectId(book) // '978-0-123'
 ```
 
 #### Has/Check Operations
@@ -656,6 +687,10 @@ todos = todos.insertMany([
 // Update (merges with existing)
 todos = todos.update(1, { completed: true })
 
+// Find specific todo
+const todo = todos.find(t => t.text === 'Build app')
+// Returns: { id: 2, text: 'Build app', completed: false }
+
 // Filter
 const completed = todos.filter(todo => todo.completed)
 
@@ -739,6 +774,58 @@ const updated = products.insert([
 console.log(updated.select('ABC-123'))
 ```
 
+### Finding Entities
+
+```typescript
+interface User {
+  id: number
+  name: string
+  email: string
+  role: 'admin' | 'user' | 'guest'
+  age?: number
+}
+
+const users = new Items<number, User>([
+  { id: 1, name: 'Alice', email: 'alice@example.com', role: 'admin', age: 30 },
+  { id: 2, name: 'Bob', email: 'bob@example.com', role: 'user', age: 25 },
+  { id: 3, name: 'Charlie', email: 'charlie@example.com', role: 'user' }
+])
+
+// Find admin user
+const admin = users.find(user => user.role === 'admin')
+// Returns: { id: 1, name: 'Alice', email: 'alice@example.com', role: 'admin', age: 30 }
+
+// Find user by name
+const bob = users.find(user => user.name === 'Bob')
+// Returns: { id: 2, name: 'Bob', email: 'bob@example.com', role: 'user', age: 25 }
+
+// Find first user with age defined
+const withAge = users.find(user => user.age !== undefined)
+// Returns: { id: 1, name: 'Alice', ... }
+
+// Find by ID using array
+const userById = users.find([2])
+// Returns: { id: 2, name: 'Bob', ... }
+
+// Complex condition
+const youngUser = users.find(user => user.role === 'user' && (user.age ?? 0) < 30)
+// Returns: { id: 2, name: 'Bob', ... }
+
+// Returns undefined when not found
+const notFound = users.find(user => user.role === 'superadmin')
+// Returns: undefined
+
+// Using find for validation
+const hasAdmin = users.find(user => user.role === 'admin') !== undefined
+console.log(hasAdmin) // true
+
+// Find and update pattern
+const userToUpdate = users.find(user => user.email === 'bob@example.com')
+if (userToUpdate) {
+  users = users.update(userToUpdate.id, { age: 26 })
+}
+```
+
 ### With Sorting
 
 ```typescript
@@ -752,6 +839,52 @@ const items = new Items<number, User>(
 )
 
 console.log(items.getIds()) // [1, 2, 3] - sorted by name
+```
+
+### Using selectId Method
+
+The `selectId` method is useful when you need to get the ID from an entity, especially when working with custom ID selectors or when you need to ensure consistency with your collection's ID extraction logic.
+
+```typescript
+interface Product {
+  sku: string
+  name: string
+  price: number
+}
+
+const products = new Items<string, Product>([], {
+  selectId: (product) => product.sku
+})
+
+// Adding products
+const product1 = { sku: 'PROD-001', name: 'Laptop', price: 999 }
+const product2 = { sku: 'PROD-002', name: 'Mouse', price: 29 }
+
+let inventory = products.insertMany([product1, product2])
+
+// Get ID from entity - useful for updates or removals
+const productToUpdate = inventory.find(p => p.name === 'Laptop')
+if (productToUpdate) {
+  const productId = inventory.selectId(productToUpdate) // 'PROD-001'
+  inventory = inventory.update(productId, { price: 899 })
+}
+
+// Checking if entity exists before insertion
+const newProduct = { sku: 'PROD-003', name: 'Keyboard', price: 79 }
+const newProductId = inventory.selectId(newProduct) // 'PROD-003'
+
+if (!inventory.has(newProductId)) {
+  inventory = inventory.insert(newProduct)
+}
+
+// Bulk operations with dynamic IDs
+const productsToRemove = [
+  { sku: 'PROD-001', name: 'Laptop', price: 899 },
+  { sku: 'PROD-002', name: 'Mouse', price: 29 }
+]
+
+const idsToRemove = productsToRemove.map(p => inventory.selectId(p))
+inventory = inventory.removeMany(idsToRemove)
 ```
 
 ---

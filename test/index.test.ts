@@ -677,6 +677,124 @@ describe('Items', () => {
     })
   })
 
+  describe('find', () => {
+    it('finds entity by predicate', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 20 }
+      ])
+      const found = items.find(user => user.age === 30)
+
+      expect(found).toEqual({ id: 2, name: 'Bob', age: 30 })
+    })
+
+    it('finds first entity matching predicate', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 30 }
+      ])
+      const found = items.find(user => user.age === 30)
+
+      // Should return the first match (Bob)
+      expect(found).toEqual({ id: 2, name: 'Bob', age: 30 })
+    })
+
+    it('finds entity by single id in array', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+        { id: 3, name: 'Charlie' }
+      ])
+      const found = items.find([2])
+
+      expect(found).toEqual({ id: 2, name: 'Bob' })
+    })
+
+    it('returns first entity from id array', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+        { id: 3, name: 'Charlie' }
+      ])
+      const found = items.find([2, 3])
+
+      // Should return the first id in the array (id: 2)
+      expect(found).toEqual({ id: 2, name: 'Bob' })
+    })
+
+    it('returns undefined when no match found by predicate', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 }
+      ])
+      const found = items.find(user => user.age === 99)
+
+      expect(found).toBeUndefined()
+    })
+
+    it('returns undefined when id does not exist', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+      const found = items.find([99])
+
+      expect(found).toBeUndefined()
+    })
+
+    it('returns undefined for empty collection', () => {
+      const items = new Items<User>()
+      const found = items.find(user => user.age === 25)
+
+      expect(found).toBeUndefined()
+    })
+
+    it('finds by complex predicate', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 30 }
+      ])
+      const found = items.find(user => user.name.startsWith('C') && user.age === 30)
+
+      expect(found).toEqual({ id: 3, name: 'Charlie', age: 30 })
+    })
+
+    it('finds by name matching', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 20 }
+      ])
+      const found = items.find(user => user.name === 'Charlie')
+
+      expect(found).toEqual({ id: 3, name: 'Charlie', age: 20 })
+    })
+
+    it('works with optional properties', () => {
+      const items = new Items<User>([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie' }
+      ])
+      const found = items.find(user => user.age !== undefined)
+
+      expect(found).toEqual({ id: 2, name: 'Bob', age: 30 })
+    })
+
+    it('returns undefined when searching in empty id array', () => {
+      const items = new Items([
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' }
+      ])
+      const found = items.find([])
+
+      expect(found).toBeUndefined()
+    })
+  })
+
   describe('select', () => {
     it('selects entity by id', () => {
       const items = new Items([{ id: 1, name: 'Alice' }])

@@ -18,3 +18,16 @@ export function selector<E, I extends StrOrNum>(items: Items<E, I>, selector: Se
       .forEach(id => operation(items.select(id), id))
   }
 }
+
+export function selectorSingle<E, I extends StrOrNum>(items: Items<E, I>, selector: Selector<E, I>) {
+  if (typeof selector === 'function') {
+    return Array
+      .from(items)
+      .find((entity, id) => (selector as SelectorFn<E>)(entity))
+  } else {
+    const id = Array
+      .from(selector as Iterable<I>)
+      .at(0)
+    return items.select(id)
+  }
+}
