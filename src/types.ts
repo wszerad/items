@@ -8,11 +8,17 @@ export type TestFn<E> = (entry: E) => boolean
 
 export type MatchFn<E, T> = (entity: T, existing: E) => boolean
 
-export type Selector<E extends Object, I extends ItemId, SE = E, ST extends E | undefined = E> = ((selector: Select<E, I, SE, ST>) => SingleSelect<E, I, SE, ST>) | ((selector: Select<E, I, SE, ST>) => Select<E, I, SE, ST>) | I | Iterable<I>
+export type SelectorSelect<E, EE, SE> =  (selector: Select<E, unknown>) => Select<EE, SE>
 
-export type UpdateFn<E> = (entity: E | undefined) => E
+export type SelectorSelectSingle<E, EE, SE> = (selector: Select<E, unknown>) => SingleSelect<EE, SE>
 
-export type Updater<E> = UpdateFn<E> | Partial<E>
+export type SelectorChain<E, EE, SE> = SelectorSelect<E, EE, SE> | SelectorSelectSingle<E, EE, SE>
+
+export type Selector<E, EE, I extends ItemId, SE = E> = SelectorChain<E, EE, SE> | I | Iterable<I>
+
+export type UpdateFn<E, EE, SE> = (entity: EE, match?: SE) => E
+
+export type Updater<E, EE, SE = E> = UpdateFn<E, EE, SE> | Partial<E>
 
 export type SelectId<E> = (entity: E) => ItemId
 

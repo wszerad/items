@@ -1,67 +1,59 @@
-import { ItemId, MatchFn, TestFn } from './types'
-import { Items } from './Items'
+import { MatchFn, TestFn } from './types'
 
-// NOTE: E items in Items
-// NOTE: I Items id type
-// NOTE: SE entries provided by from/on
-// NOTE: ST items filtered from Items but with undefined possibility
-export class BaseSelect<E extends Object, I extends ItemId, SE = E, ST extends E | undefined = E> {
+// NOTE: E selected items, may be undefined as well
+// NOTE: SE content type
+export class BaseSelect<E, SE> {
   constructor(
-    public items: ST[],
-    public self: Items<E, I>,
-    public context: Map<SE, ST> = new Map()
+    public items: E[],
+    public context: Map<SE, E> = new Map()
   ) {}
-
-  get ids(): (I | undefined)[] {
-    return this.items.map(item => this.self.extractId(item as E))
-  }
 }
 
-export class SingleSelect<E extends Object, I extends ItemId, SE = E, ST extends E | undefined = E> extends BaseSelect<E, I, SE, ST> {}
+export class SingleSelect<E, SE> extends BaseSelect<E, SE> {}
 
-export class Select<E extends Object, I extends ItemId, SE = E, ST extends E | undefined = E> extends BaseSelect<E, I, SE, ST> {
+export class Select<E, SE> extends BaseSelect<E, SE> {
   take(len: number) {
-    return new Select<E, I, SE, ST>(this.items.slice(0, len), this.self)
+    return new Select<E, SE>(this.items.slice(0, len))
   }
 
   skip(len: number) {
-    return new Select<E, I, SE, ST>(this.items.slice(len), this.self)
+    return new Select<E, SE>(this.items.slice(len))
   }
 
-  filter(testFn: TestFn<ST>) {
+  filter(testFn: TestFn<E>) {
     const filteredIds = this.items.filter((entry) => {
       return testFn(entry)
     })
-    return new Select<E, I, SE, ST>(filteredIds, this.self)
+    return new Select<E, SE>(filteredIds)
   }
 
   revert(){
-    return new Select<E, I, SE, ST>([...this.items].reverse(), this.self)
+    return new Select<E, SE>([...this.items].reverse())
   }
 
-  sort(sortFn: (x: ST, y: ST) => number) {
+  sort(sortFn: (x: E, y: E) => number) {
     const sortedIds = [...this.items]
       .sort((a, b) => {
         return sortFn(a, b)
       })
-    return new Select<E, I, SE, ST>(sortedIds, this.self)
+    return new Select<E, SE>(sortedIds)
   }
 
   at(index: number) {
     const id = this.items[index]
-    return new SingleSelect<E, I, SE, ST | undefined>([id], this.self)
+    return new SingleSelect<E | undefined, SE>([id])
   }
 
-  find(testFn: TestFn<ST>) {
+  find(testFn: TestFn<E>) {
     const id = this.items.find((entry) => {
       return testFn(entry)
     })
-    return new SingleSelect<E, I, SE, ST | undefined>(id ? [id] : [], this.self)
+    return new SingleSelect<E | undefined, SE>(id ? [id] : [])
   }
 
-  from<T>(entities: Iterable<E>): Select<E, I, SE, ST>
-  from<T>(entities: Iterable<T>, matcher: MatchFn<ST, T>): Select<E, I, T, ST | undefined>
-  from<T>(entities: Iterable<E> | Iterable<T>, matcher?: MatchFn<ST, T>): Select<E, I, SE, ST> | Select<E, I, T, ST | undefined> {
+  from<T>(entities: Iterable<E>): Select<E, SE>
+  from<T>(entities: Iterable<T>, matcher: MatchFn<E, T>): Select<E | undefined, T>
+  from<T>(entities: Iterable<E> | Iterable<T>, matcher?: MatchFn<E, T>): Select<E, SE> | Select<E | undefined, T> {
     if (matcher) {
       const items = Array.from(entities as Iterable<T>)
       const pairs = new Map(
@@ -69,23 +61,23 @@ export class Select<E extends Object, I extends ItemId, SE = E, ST extends E | u
           .map(entry => {
             const pair = this.items.find(item => matcher(entry, item))
             return [entry, pair]
-          }) as [T, ST | undefined][]
+          }) as [T, E | undefined][]
       )
-      return new Select<E, I, T, ST | undefined>(Array.from(pairs.values()), this.self, pairs)
+      return new Select<E | undefined, T>(Array.from(pairs.values()), pairs)
     } else {
-      return new Select<E, I, SE, ST>(Array.from(entities as Iterable<ST>), this.self)
+      return new Select<E, SE>(Array.from(entities as Iterable<E>))
     }
   }
 
-  on<T>(entry: E): SingleSelect<E, I, SE, ST>
-  on<T>(entry: T, matcher: MatchFn<ST, T>): SingleSelect<E, I, T, ST | undefined>
-  on<T>(entry: E, matcher?: MatchFn<ST, T>): SingleSelect<E, I, SE, ST> | SingleSelect<E, I, T, ST | undefined> {
+  on<T>(entry: E): SingleSelect<E, SE>
+  on<T>(entry: T, matcher: MatchFn<E, T>): SingleSelect<E | undefined, T>
+  on<T>(entry: E, matcher?: MatchFn<E, T>): SingleSelect<E, SE> | SingleSelect<E | undefined, T> {
     if (matcher) {
       const select = this.from([entry as unknown as T], matcher)
-      return new SingleSelect<E, I, T, ST | undefined>(select.items, this.self, select.context)
+      return new SingleSelect<E | undefined, T>(select.items, select.context)
     } else {
       const select = this.from([entry])
-      return new SingleSelect<E, I, SE, ST>(select.items, this.self, select.context)
+      return new SingleSelect<E, SE>(select.items, select.context)
     }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { Items } from '../src/Items'
-import { Select, SingleSelect } from '../src/select'
+import { Items } from '../src'
+import { Select, SingleSelect } from '../src'
 
 interface User {
   id: number
