@@ -11,6 +11,10 @@ export class BaseSelect<E extends Object, I extends ItemId, SE = E, ST extends E
     public self: Items<E, I>,
     public context: Map<SE, ST> = new Map()
   ) {}
+
+  get ids(): (I | undefined)[] {
+    return this.items.map(item => this.self.extractId(item as E))
+  }
 }
 
 export class SingleSelect<E extends Object, I extends ItemId, SE = E, ST extends E | undefined = E> extends BaseSelect<E, I, SE, ST> {}

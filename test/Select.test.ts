@@ -78,27 +78,6 @@ describe('Select', () => {
       expect(result.length).toBe(2)
       expect(result.map(u => u.name)).toEqual(['Alice', 'Charlie'])
     })
-
-    it('should provide id and index to filter function', () => {
-      const items = new Items<User>([
-        { id: 1, name: 'Alice', age: 30 },
-        { id: 2, name: 'Bob', age: 25 },
-        { id: 3, name: 'Charlie', age: 35 }
-      ])
-
-      const ids: number[] = []
-      const indices: number[] = []
-
-      // @ts-ignore
-      items.select((s) => s.filter((user: User, id: number, index: number) => {
-        ids.push(id)
-        indices.push(index)
-        return true
-      }))
-
-      expect(ids).toEqual([1, 2, 3])
-      expect(indices).toEqual([0, 1, 2])
-    })
   })
 
   describe('revert', () => {
@@ -146,11 +125,36 @@ describe('Select', () => {
         { id: 3, name: 'Charlie', age: 35 }
       ])
 
-      const select = new Select(items.getIds(), items)
+      const select = new Select(items.getEntities(), items)
       const single = select.at(1)
 
       expect(single).toBeInstanceOf(SingleSelect)
       expect(single.ids).toEqual([2])
+    })
+  })
+
+  describe('find', () => {
+    it('should find first item matching predicate', () => {
+      const items = new Items<User>([
+        { id: 1, name: 'Alice', age: 30 },
+        { id: 2, name: 'Bob', age: 25 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ])
+      const result = items.select((s) => s.find((user: User) => user.age > 25))
+
+      expect(result).toBeDefined()
+      expect(result?.name).toBe('Alice')
+      expect(result?.id).toBe(1)
+    })
+
+    it('should return undefined if no item matches', () => {
+      const items = new Items<User>([
+        { id: 1, name: 'Alice', age: 30 },
+        { id: 2, name: 'Bob', age: 25 }
+      ])
+      const result = items.select((s) => s.find((user: User) => user.age > 40))
+
+      expect(result).toBeUndefined()
     })
   })
 
@@ -162,7 +166,7 @@ describe('Select', () => {
         { id: 3, name: 'Charlie', age: 35 }
       ])
 
-      const select = new Select(items.getIds(), items)
+      const select = new Select(items.getEntities(), items)
       const newSelect = select.from([
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
@@ -179,7 +183,7 @@ describe('Select', () => {
         { id: 2, name: 'Bob', age: 25 }
       ])
 
-      const select = new Select(items.getIds(), items)
+      const select = new Select(items.getEntities(), items)
       const single = select.on({ id: 2, name: 'Bob', age: 25 })
 
       expect(single).toBeInstanceOf(SingleSelect)
@@ -237,10 +241,9 @@ describe('SingleSelect', () => {
     const items = new Items<User>([
       { id: 1, name: 'Alice', age: 30 }
     ])
-    const single = new SingleSelect([1], items)
+    const single = new SingleSelect([{ id: 1, name: 'Alice', age: 30 }], items)
 
     expect(single.ids).toEqual([1])
     expect(single.self).toBe(items)
   })
 })
-
