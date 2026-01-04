@@ -1,10 +1,10 @@
-import type { CheckFn, ItemId, ItemsOptions, ItemsState, Selector, Updater } from './types'
+import { CheckFn, ItemId, ItemsOptions, ItemsState, Selector, Updater } from './types'
 import { defaultSelectId } from './utils'
 import { Select, SingleSelect } from './select'
 import { itemsDiff } from './diff'
 
-export class Items<E> {
-  private state: ItemsState<E, ItemId>
+export class Items<E extends Object, I extends ItemId> {
+  private state: ItemsState<E, I>
 
   constructor(
     items: Iterable<E> = [],
@@ -17,6 +17,7 @@ export class Items<E> {
           const id = this.extractId(item)
           return [id, item]
         })
+        .filter(([id]) => id !== undefined) as [I, E][]
     )
 
     this.state = {
@@ -26,29 +27,31 @@ export class Items<E> {
   }
 
   // NOTE: Add item if id not exists
-  add(items: Iterable<E>): Items<E> {
+  add(items: Iterable<E>) {
     const newEntities = new Map(this.state.entities)
 
     Array.from(items).forEach((item) => {
       const id = this.extractId(item)
+      if (id === undefined) {
+        return
+      }
       if (!newEntities.has(id)) {
         newEntities.set(id, item)
       }
     })
 
-    return new Items<E>(newEntities.values(), this.options)
+    return new Items<E, I>(newEntities.values(), this.options)
   }
 
   // NOTE: update selected ids with partial data or call function (even if selected id not exists)
-  update(select: Selector<E>, updater: Updater<E>): Items<E> {
-    const [, selectedIds] = this.resolveSelector(select)
+  update(select: Selector<E, I>, updater: Updater<E>) {
+    const [, entities] = this.resolveSelector(select)
     const newEntities = new Map(this.state.entities)
     const isFn = typeof updater === 'function'
 
-    selectedIds
-      .forEach((id) => {
-        const entity = newEntities.get(id)
-
+    entities
+      .forEach((entity) => {
+        const id = this.extractId(entity)!
         if (isFn) {
           newEntities.set(id, updater(entity))
         } else if (entity) {
@@ -56,54 +59,58 @@ export class Items<E> {
         }
       })
 
-    return new Items<E>(newEntities.values(), this.options)
+    return new Items<E, I>(newEntities.values(), this.options)
   }
 
   // NOTE: add if not exists, overwrite if exists
-  merge(items: Iterable<E>): Items<E> {
+  merge(items: Iterable<E>) {
     const newEntities = new Map(this.state.entities)
 
-    Array.from(items).forEach((item) => {
-      const id = this.extractId(item)
-      const entry = this.get(id)
-      newEntities.set(id, entry ? { ...entry, ...item } : item)
-    })
+    Array
+      .from(items)
+      .map(item => [this.extractId(item), item] as [I, E])
+      .filter(([id]) => id !== undefined)
+      .forEach(([id, item]) => {
+        const entry = this.get(id)
+        newEntities.set(id, entry ? { ...entry, ...item } : item)
+      })
 
-    return new Items<E>(newEntities.values(), this.options)
+    return new Items<E, I>(newEntities.values(), this.options)
   }
 
-  remove(select: Selector<E>): Items<E> {
-    const [, selectedIds] = this.resolveSelector(select)
+  remove(select: Selector<E, I>) {
+    const [, entities] = this.resolveSelector(select)
+    const selectedIds = entities.map(entity => this.extractId(entity))
     const idsToKeep = this.state.ids.filter(id => !selectedIds.includes(id))
     const items = idsToKeep.map(id => this.get(id)!)
-    return new Items<E>(items, this.options)
+    return new Items<E, I>(items, this.options)
   }
 
-  pick(select: Selector<E>): Items<E> {
-    const [, selectedIds] = this.resolveSelector(select)
-    const items = selectedIds.map(id => this.get(id)!)
-    return new Items<E>(items, this.options)
+  pick(select: Selector<E, I>) {
+    const [, entities] = this.resolveSelector(select)
+    return new Items<E, I>(entities, this.options)
   }
 
-  select(select: ItemId): E | undefined
-  select(select: Iterable<ItemId>): E[]
-  select(select: (selector: Select<E>) => Select<E>): E[]
-  select(select: (selector: Select<E>) => SingleSelect<E>): E | undefined
-  select(select: Selector<E>): undefined | E | E[] {
-    const [single, selectedIds] = this.resolveSelector(select)
-    const items = selectedIds.map(id => this.get(id)).filter(Boolean) as E[]
-    return single ? items[0] : items
+  select(select: I): E | undefined
+  select(select: Iterable<I>): E[]
+  select(select: (selector: Select<E, I>) => Select<E, I>): E[]
+  select(select: (selector: Select<E, I>) => SingleSelect<E, I>): E | undefined
+  select(select: Selector<E, I>): undefined | E | E[] {
+    const [single, entities] = this.resolveSelector(select)
+    return single ? entities[0] : entities
   }
 
-  selectId(select: (selector: Select<E>) => Select<E>): ItemId[]
-  selectId(select: (selector: Select<E>) => SingleSelect<E>): ItemId | undefined
-  selectId(select: Selector<E>): undefined | ItemId | ItemId[] {
-    const [single, selectedIds] = this.resolveSelector(select)
-    return single ? selectedIds[0] : selectedIds
+  selectId(select: (selector: Select<E, I>) => Select<E, I>): I[]
+  selectId(select: (selector: Select<E, I>) => SingleSelect<E, I>): I
+  selectId(select: Selector<E, I>): undefined | I | I[] {
+    const [single, entities] = this.resolveSelector(select)
+    return single
+      ? this.extractId(entities[0])
+      : entities.map(entity => this.extractId(entity)!)
   }
 
-  clear(): Items<E> {
-    return new Items<E>([], this.options)
+  clear() {
+    return new Items<E, I>([], this.options)
   }
 
   every(check: CheckFn<E>) {
@@ -114,15 +121,17 @@ export class Items<E> {
     return this.getIds().some(id => check(this.get(id)!))
   }
 
-  has(id: ItemId) {
+  has(id: I) {
     return this.state.ids.includes(id)
   }
 
-  get(id: ItemId): E | undefined {
-    return this.state.entities.get(id)
+  get(id: I ): E | undefined
+  get(id: undefined): undefined
+  get(id: I | undefined): E | undefined {
+    return id === undefined ? undefined : this.state.entities.get(id)
   }
 
-  getIds(): ItemId[] {
+  getIds(): I[] {
     return [...this.state.ids]
   }
 
@@ -134,22 +143,22 @@ export class Items<E> {
     return this.state.ids.length
   }
 
-  private resolveSelector(select: Selector<E>): [boolean, ItemId[]]{
+  private resolveSelector<SE, ST extends E>(select: Selector<E, I, SE, ST>): [boolean, ST[], Map<SE, ST>]{
     if (typeof select === 'function') {
-      const newSelect = new Select(this.state.ids, this)
+      const newSelect = new Select(this.getEntities(), this)
       const result = select(newSelect)
-      return [result instanceof SingleSelect, result.ids]
+      return [result instanceof SingleSelect, result.items, result.context]
     } else if (typeof select === 'string' || typeof select === 'number') {
-      return [true, [select]]
+      return [true, [select].map(id => this.get(id)), []]
     } else {
-      return [false, Array.from(select)]
+      return [false, Array.from(select).map(id => this.get(id)!), []]
     }
   }
 
   private sortIds(
-    ids: ItemId[],
-    entities: Map<ItemId, E>
-  ): Array<ItemId> {
+    ids: I[],
+    entities: Map<I, E>
+  ): Array<I> {
     if (this.sortComparer === false) {
       return ids
     }
@@ -161,8 +170,12 @@ export class Items<E> {
     })
   }
 
-  extractId(entity: E): ItemId {
-    return this.options?.selectId?.(entity) as undefined || defaultSelectId(entity as E & { id: ItemId })
+  extractId(entity: E | undefined): I | undefined {
+    if (!entity) {
+      return undefined
+    }
+
+    return this.options?.selectId?.(entity) as undefined || defaultSelectId(entity as E & { id: I })
   }
 
   private get sortComparer() {
@@ -173,7 +186,7 @@ export class Items<E> {
     return this.state.entities.values()
   }
 
-  static compare<E>(base: Items<E>, to: Items<E>) {
+  static compare<E extends Object, I extends ItemId>(base: Items<E, I>, to: Items<E, I>) {
     return itemsDiff(base, to)
   }
 }
