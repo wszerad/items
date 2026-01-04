@@ -8,9 +8,9 @@ export type TestFn<E> = (entry: E) => boolean
 
 export type MatchFn<E, T> = (entity: T, existing: E) => boolean
 
-export type SelectorSelect<E, EE, SE> =  (selector: Select<E, unknown>) => Select<EE, SE>
+export type SelectorSelect<E, EE, SE> =  (selector: Select<E, any>) => Select<EE, SE>
 
-export type SelectorSelectSingle<E, EE, SE> = (selector: Select<E, unknown>) => SingleSelect<EE, SE>
+export type SelectorSelectSingle<E, EE, SE> = (selector: Select<E, any>) => SingleSelect<EE, SE>
 
 export type SelectorChain<E, EE, SE> = SelectorSelect<E, EE, SE> | SelectorSelectSingle<E, EE, SE>
 

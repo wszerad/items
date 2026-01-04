@@ -2,7 +2,7 @@ import type { ItemId } from './types'
 import { Items } from './Items'
 import { diff} from 'ohash/utils'
 
-export function itemsDiff<E>(fromItems: Items<E>, toItems: Items<E>) {
+export function itemsDiff<E extends Object, I extends ItemId>(fromItems: Items<E, I>, toItems: Items<E, I>) {
   const ids = new Set(toItems.getIds())
   const baseIds = new Set(fromItems.getIds())
 
