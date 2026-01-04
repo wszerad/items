@@ -3,52 +3,62 @@ import { MatchFn, TestFn } from './types'
 // NOTE: E selected items, may be undefined as well
 // NOTE: SE content type
 export class BaseSelect<E, SE> {
+  public context: Map<SE, E>
+
   constructor(
     public items: E[],
-    public context: Map<SE, E> = new Map()
-  ) {}
+    context: Map<SE, E> = new Map()
+  ) {
+    // Automatically clean context to only include items that exist in items array
+    this.context = this.cleanContext(items, context)
+  }
+
+  private cleanContext(items: E[], context: Map<SE, E>): Map<SE, E> {
+    if (context.size === 0) {
+      return new Map()
+    }
+
+    const cleanedContext = new Map<SE, E>()
+    for (const [key, value] of context.entries()) {
+      if (items.includes(value)) {
+        cleanedContext.set(key, value)
+      }
+    }
+    return cleanedContext
+  }
 }
 
 export class SingleSelect<E, SE> extends BaseSelect<E, SE> {}
 
 export class Select<E, SE> extends BaseSelect<E, SE> {
   take(len: number) {
-    return new Select<E, SE>(this.items.slice(0, len))
+    return new Select<E, SE>(this.items.slice(0, len), this.context)
   }
 
   skip(len: number) {
-    return new Select<E, SE>(this.items.slice(len))
+    return new Select<E, SE>(this.items.slice(len), this.context)
   }
 
   filter(testFn: TestFn<E>) {
-    const filteredIds = this.items.filter((entry) => {
-      return testFn(entry)
-    })
-    return new Select<E, SE>(filteredIds)
+    return new Select<E, SE>(this.items.filter((entry) => testFn(entry)), this.context)
   }
 
   revert(){
-    return new Select<E, SE>([...this.items].reverse())
+    return new Select<E, SE>([...this.items].reverse(), this.context)
   }
 
   sort(sortFn: (x: E, y: E) => number) {
-    const sortedIds = [...this.items]
-      .sort((a, b) => {
-        return sortFn(a, b)
-      })
-    return new Select<E, SE>(sortedIds)
+    return new Select<E, SE>([...this.items].sort((a, b) => sortFn(a, b)), this.context)
   }
 
   at(index: number) {
-    const id = this.items[index]
-    return new SingleSelect<E | undefined, SE>([id])
+    const item = this.items[index]
+    return new SingleSelect<E | undefined, SE>([item], this.context)
   }
 
   find(testFn: TestFn<E>) {
-    const id = this.items.find((entry) => {
-      return testFn(entry)
-    })
-    return new SingleSelect<E | undefined, SE>(id ? [id] : [])
+    const item = this.items.find((entry) => testFn(entry))
+    return new SingleSelect<E | undefined, SE>(item ? [item] : [], this.context)
   }
 
   from<T>(entities: Iterable<E>): Select<E, SE>

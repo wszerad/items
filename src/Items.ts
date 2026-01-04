@@ -114,8 +114,8 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
 
   select<EE, SE = never>(select: I): E | undefined
   select<EE, SE = never>(select: Iterable<I>): E[]
-  select<EE, SE = never>(select: SelectorSelectSingle<E, EE, SE>): E | undefined
   select<EE, SE = never>(select: SelectorSelect<E, EE, SE>): E[]
+  select<EE, SE = never>(select: SelectorSelectSingle<E, EE, SE>): E | undefined
   select<EE, SE = never>(select: Selector<E, EE, I, SE>): undefined | E | E[] {
     let [single, entities] = this.resolveSelector(select)
     entities = entities.filter(Boolean)
