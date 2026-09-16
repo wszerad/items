@@ -1,20 +1,12 @@
-import { defaultSelectId, SelectId, StrOrNum } from './selectId'
-import { selector, Selector, SelectorFn } from './selector'
-import { Updater } from './updater'
+import {
+  CheckFn, ItemId, ItemsOptions, ItemsState, Selector, SelectorChain, SelectorSelect,
+  SelectorSelectSingle, Updater
+} from './types'
+import { defaultSelectId } from './utils'
+import { Select, SingleSelect } from './select'
 import { itemsDiff } from './diff'
-import { update } from './updater'
 
-export type ItemsOptions<E> = {
-  selectId?: SelectId<E>
-  sortComparer?: false | ((a: E, b: E) => number)
-}
-
-export interface ItemsState<E, I> {
-  ids: I[]
-  entities: Map<I, E>
-}
-
-export class Items<E, I extends StrOrNum = StrOrNum> {
+export class Items<E extends Object, I extends ItemId = ItemId> {
   private state: ItemsState<E, I>
 
   constructor(
@@ -22,10 +14,13 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     private options: ItemsOptions<E> = {}
   ) {
     const entities = new Map(
-      Array.from(items).map(item => {
-        const id = this.selectId(item)
-        return [id, item]
-      })
+      Array
+        .from(items)
+        .map((item) => {
+          const id = this.extractId(item)
+          return [id, item]
+        })
+        .filter(([id]) => id !== undefined) as [I, E][]
     )
 
     this.state = {
@@ -34,154 +29,161 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     }
   }
 
-  getIds(): I[] {
-    return [...this.state.ids]
-  }
+  // NOTE: Add item if id not exists
+  add(items: Iterable<E>) {
+    const newEntities = new Map(this.state.entities)
 
-  getEntities(): Map<I, E> {
-    return new Map(this.state.entities)
-  }
-
-  get length(): number {
-    return this.state.ids.length
-  }
-
-  select(id: I): E | undefined {
-    return this.state.entities.get(id)
-  }
-
-  insert(entity: E) {
-    return this.insertMany([entity])
-  }
-
-  insertMany(entities: Iterable<E>) {
-    return new Items<E, I>(
-      [...this, ...Array.from(entities).filter(entity => !this.has(this.selectId(entity)))],
-      this.options
-    )
-  }
-
-  upsert(entity: Partial<E>) {
-    return this.upsertMany([entity])
-  }
-
-  upsertMany(entities: Iterable<Partial<E>>) {
-    const clone = this.getEntities()
-    Array.from(entities).forEach(entity => {
-      const id = this.selectId(entity as E)
-      const existing = clone.get(id)
-      if (existing) {
-        clone.set(id, { ...existing, ...entity } as E)
-      } else {
-        clone.set(id, entity as E)
+    Array.from(items).forEach((item) => {
+      const id = this.extractId(item)
+      if (id === undefined) {
+        return
+      }
+      if (!newEntities.has(id)) {
+        newEntities.set(id, item)
       }
     })
-    return new Items<E, I>(clone.values(), this.options)
+
+    return new Items<E, I>(newEntities.values(), this.options)
   }
 
-  set(entity: E) {
-    return this.setMany([entity])
-  }
+  // NOTE: update selected ids with partial data or call function
+  update<SE, EE>(select: Selector<E, EE, I, SE>, updater: Partial<E>): Items<E, I>
+  update<SE, EE>(select: I | Iterable<I>, updater: Updater<E, E, E>): Items<E, I>
+  update<SE, EE>(select: SelectorChain<E, EE, SE>, updater: Updater<E, EE, SE>): Items<E, I>
+  update<SE, EE>(select: Selector<E, EE, I, SE>, updater: Updater<E, EE, SE>): Items<E, I> {
+    const [, entities, map] = this.resolveSelector(select)
+    const newEntities = new Map(this.state.entities)
+    const isFn = typeof updater === 'function'
 
-  setMany(entities: Iterable<E>) {
-    return new Items<E, I>([...this, ...entities], this.options)
-  }
+    if (isFn && map.size) {
+      Array
+        .from(map.entries())
+        .forEach(([entity, pair]) => {
+          const updatedEntry = updater(pair, entity)
+          const id = this.extractId(updatedEntry)!
+          newEntities.set(id, updatedEntry)
+        })
 
-  every(check: SelectorFn<E>) {
-    return this.getIds().every(id => check(this.select(id)!))
-  }
-
-  some(check: SelectorFn<E>) {
-    return this.getIds().some(id => check(this.select(id)!))
-  }
-
-  has(id: I) {
-    return this.state.ids.includes(id)
-  }
-
-  hasMany(select: Selector<E, I>) {
-    let failToFind = false
-    let result = false
-    selector(this, select, entity => {
-      if (entity) {
-        result = true
-      } else {
-        failToFind = true
-      }
-    })
-    return !failToFind && result
-  }
-
-  update(id: I, updater: Updater<E>) {
-    const entity = this.select(id)
-    if (!entity) {
-      return this
+      return new Items<E, I>(newEntities.values(), this.options)
     }
-    const clone = this.getEntities()
-    clone.set(id, update(entity, updater))
-    return new Items<E, I>(clone.values(), this.options)
+
+    entities
+      .forEach((entity) => {
+        if (isFn) {
+          const updatedEntry = updater(entity)
+          const id = this.extractId(updatedEntry)!
+          newEntities.set(id, updatedEntry)
+        } else if (entity) {
+          const updatedEntry = { ...(entity as unknown as E), ...updater }
+          const id = this.extractId(updatedEntry)!
+          newEntities.set(id, updatedEntry)
+        }
+      })
+
+    return new Items<E, I>(newEntities.values(), this.options)
   }
 
-  updateMany(select: Selector<E, I>, updater: Updater<E>) {
-    const clone = this.getEntities()
-    selector(this, select, (entity, id) => {
-      if (entity) {
-        clone.set(id, update(entity, updater))
-      }
-    })
-    return new Items<E, I>(clone.values(), this.options)
+  // NOTE: add if not exists, overwrite if exists
+  merge(items: Iterable<E>) {
+    const newEntities = new Map(this.state.entities)
+
+    Array
+      .from(items)
+      .map(item => [this.extractId(item), item] as [I, E])
+      .filter(([id]) => id !== undefined)
+      .forEach(([id, item]) => {
+        const entry = this.get(id)
+        newEntities.set(id, entry ? { ...entry, ...item } : item)
+      })
+
+    return new Items<E, I>(newEntities.values(), this.options)
   }
 
-  remove(id: I) {
-    const clone = this.getEntities()
-    clone.delete(id)
-    return new Items<E, I>(clone.values(), this.options)
+  remove<EE extends E = E>(select: Selector<E, EE, I>) {
+    const [, entities] = this.resolveSelector(select)
+    const selectedIds = entities.map(entity => this.extractId(entity as E))
+    const idsToKeep = this.state.ids.filter(id => !selectedIds.includes(id))
+    const items = idsToKeep.map(id => this.get(id)!)
+    return new Items<E, I>(items, this.options)
   }
 
-  removeMany(select: Selector<E, I>) {
-    const clone = this.getEntities()
-    selector(this, select, (_, id) => {
-      clone.delete(id)
-    })
-    return new Items<E, I>(clone.values(), this.options)
+  pick<EE extends E = E>(select: Selector<E, EE, I>) {
+    const [, entities] = this.resolveSelector(select)
+    return new Items<E, I>(entities as E[], this.options)
+  }
+
+  select<EE, SE = never>(select: I): E | undefined
+  select<EE, SE = never>(select: Iterable<I>): E[]
+  select<EE, SE = never>(select: SelectorSelect<E, EE, SE>): E[]
+  select<EE, SE = never>(select: SelectorSelectSingle<E, EE, SE>): E | undefined
+  select<EE, SE = never>(select: Selector<E, EE, I, SE>): undefined | E | E[] {
+    let [single, entities] = this.resolveSelector(select)
+    entities = entities.filter(Boolean)
+    return single ? entities[0] as unknown as E : entities as unknown as E[]
+  }
+
+  selectId<EE, SE = never>(select: I): I | undefined
+  selectId<EE, SE = never>(select: Iterable<I>): I[]
+  selectId<EE, SE = never>(select: SelectorSelectSingle<E, EE, SE>): I | undefined
+  selectId<EE, SE = never>(select: SelectorSelect<E, EE, SE>): I[]
+  selectId<EE, SE = never>(select: Selector<E, EE, I, SE>): undefined | I | I[] {
+    let [single, entities] = this.resolveSelector(select)
+    entities = entities.filter(Boolean)
+    return single
+      ? this.extractId(entities[0] as unknown as E)
+      : entities.map(entity => this.extractId(entity as unknown as E)!)
   }
 
   clear() {
     return new Items<E, I>([], this.options)
   }
 
-  filter(select: Selector<E, I>) {
-    const clone = new Map<I, E>()
-
-    selector(this, select, (entity, id) => {
-      if (entity) {
-        clone.set(id, entity)
-      }
-    })
-
-    return new Items<E, I>(clone.values(), this.options)
+  every(check: CheckFn<E>) {
+    return this.getIds().every(id => check(this.get(id)!))
   }
 
-  page(page: number, pageSize: number) {
-    const totalPages = Math.ceil(this.length / pageSize)
-    return {
-      items: this.getIds()
-        .slice(page * pageSize, (page + 1) * pageSize)
-        .map(id => this.select(id)!),
-      page,
-      pageSize,
-      hasNext: page < totalPages - 1,
-      hasPrevious: page > 0,
-      total: this.length,
-      totalPages
+  some(check: CheckFn<E>) {
+    return this.getIds().some(id => check(this.get(id)!))
+  }
+
+  has(id: I) {
+    return this.state.ids.includes(id)
+  }
+
+  get(id: I ): E | undefined
+  get(id: undefined): undefined
+  get(id: I | undefined): E | undefined {
+    return id === undefined ? undefined : this.state.entities.get(id)
+  }
+
+  getIds(): I[] {
+    return [...this.state.ids]
+  }
+
+  getEntities(): E[] {
+    return this.state.ids.map(id => this.get(id)!)
+  }
+
+  get length(): number {
+    return this.state.ids.length
+  }
+
+  private resolveSelector<EE, SE>(select: Selector<E, EE, I, SE>): [boolean, EE[], Map<SE, EE>] {
+    if (typeof select === 'function') {
+      const newSelect = new Select<E, unknown>(this.getEntities())
+      const result = select(newSelect)
+      return [result instanceof SingleSelect, result.items as EE[], result.context as Map<SE, EE>]
+    } else if (typeof select === 'string' || typeof select === 'number') {
+      return [true, [this.get(select) as EE], new Map()]
+    } else {
+      return [false, Array.from(select).map(id => this.get(id) as EE), new Map()]
     }
   }
 
-  diff(base: Items<E, I>) {
-    return itemsDiff(base, this)
-  }
-
-  private sortIds(ids: I[], entities: Map<I, E>): Array<I> {
+  private sortIds(
+    ids: I[],
+    entities: Map<I, E>
+  ): Array<I> {
     if (this.sortComparer === false) {
       return ids
     }
@@ -193,8 +195,12 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     })
   }
 
-  private selectId(entity: E): I {
-    return (this.options?.selectId?.(entity) as undefined) || defaultSelectId(entity as E & { id: I })
+  extractId(entity: E | undefined): I | undefined {
+    if (!entity) {
+      return undefined
+    }
+
+    return (this.options?.selectId?.(entity) || defaultSelectId(entity as E & { id: I })) as I
   }
 
   private get sortComparer() {
@@ -204,4 +210,9 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
   [Symbol.iterator](): Iterator<E> {
     return this.state.entities.values()
   }
+
+  static compare<E extends Object, I extends ItemId>(base: Items<E, I>, to: Items<E, I>) {
+    return itemsDiff(base, to)
+  }
 }
+

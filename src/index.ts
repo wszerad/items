@@ -1,6 +1,21 @@
+// Main classes
 export { Items } from './Items'
-export type { ItemsOptions, ItemsState } from './Items'
-export type { SelectId, StrOrNum } from './selectId'
-export type { Selector, SelectorFn, Operation } from './selector'
-export type { Updater, UpdateFn } from './updater'
-export type { ItemDiff, ItemsDiff } from './diff'
+export { BaseSelect, SingleSelect, Select } from './select'
+
+// Types and interfaces
+export type {
+  ItemId,
+  CheckFn,
+  Selector,
+  UpdateFn,
+  Updater,
+  SelectId,
+  ItemsOptions,
+  ItemsState,
+  ItemDiff,
+  ItemsDiff
+} from './types'
+
+// Utilities
+export { defaultSelectId } from './utils'
+
