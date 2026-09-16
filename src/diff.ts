@@ -1,13 +1,13 @@
-import type { ItemId } from './types'
+import type { ItemDiff, ItemId, ItemsDiff } from './types'
 import { Items } from './Items'
-import { diff} from 'ohash/utils'
+import { diff } from 'ohash/utils'
 
-export function itemsDiff<E extends Object, I extends ItemId>(fromItems: Items<E, I>, toItems: Items<E, I>) {
+export function itemsDiff<E extends object, I extends ItemId>(fromItems: Items<E, I>, toItems: Items<E, I>): ItemsDiff {
   const ids = new Set(toItems.getIds())
   const baseIds = new Set(fromItems.getIds())
 
   const added: ItemId[] = []
-  const updated: any[] = []
+  const updated: ItemDiff[] = []
 
   ids.forEach(id => {
     if (!baseIds.has(id)) {

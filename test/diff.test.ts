@@ -10,9 +10,7 @@ interface User {
 
 describe('itemsDiff', () => {
   it('should detect added items', () => {
-    const from = new Items<User>([
-      { id: 1, name: 'Alice', age: 30 }
-    ])
+    const from = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
     const to = new Items<User>([
       { id: 1, name: 'Alice', age: 30 },
       { id: 2, name: 'Bob', age: 25 }
@@ -30,9 +28,7 @@ describe('itemsDiff', () => {
       { id: 1, name: 'Alice', age: 30 },
       { id: 2, name: 'Bob', age: 25 }
     ])
-    const to = new Items<User>([
-      { id: 1, name: 'Alice', age: 30 }
-    ])
+    const to = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
 
     const diff = itemsDiff(from, to)
 
@@ -42,12 +38,8 @@ describe('itemsDiff', () => {
   })
 
   it('should detect updated items', () => {
-    const from = new Items<User>([
-      { id: 1, name: 'Alice', age: 30 }
-    ])
-    const to = new Items<User>([
-      { id: 1, name: 'Alice', age: 31 }
-    ])
+    const from = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
+    const to = new Items<User>([{ id: 1, name: 'Alice', age: 31 }])
 
     const diff = itemsDiff(from, to)
 
@@ -66,8 +58,8 @@ describe('itemsDiff', () => {
     ])
     const to = new Items<User>([
       { id: 1, name: 'Alice', age: 31 }, // updated
-      { id: 2, name: 'Bob', age: 25 },   // unchanged
-      { id: 4, name: 'David', age: 40 }   // added (3 removed)
+      { id: 2, name: 'Bob', age: 25 }, // unchanged
+      { id: 4, name: 'David', age: 40 } // added (3 removed)
     ])
 
     const diff = itemsDiff(from, to)
@@ -79,12 +71,8 @@ describe('itemsDiff', () => {
   })
 
   it('should not detect unchanged items', () => {
-    const from = new Items<User>([
-      { id: 1, name: 'Alice', age: 30 }
-    ])
-    const to = new Items<User>([
-      { id: 1, name: 'Alice', age: 30 }
-    ])
+    const from = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
+    const to = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
 
     const diff = itemsDiff(from, to)
 
@@ -106,9 +94,7 @@ describe('itemsDiff', () => {
 
   it('should handle adding to empty collection', () => {
     const from = new Items<User>([])
-    const to = new Items<User>([
-      { id: 1, name: 'Alice', age: 30 }
-    ])
+    const to = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
 
     const diff = itemsDiff(from, to)
 
@@ -129,4 +115,3 @@ describe('itemsDiff', () => {
     expect(diff.removed).toEqual([1, 2])
   })
 })
-

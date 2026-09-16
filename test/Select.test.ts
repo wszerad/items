@@ -29,9 +29,7 @@ describe('Select', () => {
     })
 
     it('should create Select with items and context', () => {
-      const users: User[] = [
-        { id: 1, name: 'Alice', age: 30 }
-      ]
+      const users: User[] = [{ id: 1, name: 'Alice', age: 30 }]
       const context = new Map([['key1', users[0]]])
       const select = new Select(users, context)
 
@@ -107,7 +105,7 @@ describe('Select', () => {
         { id: 3, name: 'Charlie', age: 35 }
       ]
       const select = new Select(users)
-      const result = select.filter((user) => user.age > 25)
+      const result = select.filter(user => user.age > 25)
 
       expect(result).toBeInstanceOf(Select)
       expect(result.items).toHaveLength(2)
@@ -120,7 +118,7 @@ describe('Select', () => {
         { id: 2, name: 'Bob', age: 25 }
       ]
       const select = new Select(users)
-      const result = select.filter((user) => user.age > 50)
+      const result = select.filter(user => user.age > 50)
 
       expect(result.items).toHaveLength(0)
     })
@@ -208,9 +206,7 @@ describe('Select', () => {
     })
 
     it('should return SingleSelect with undefined for out of bounds index', () => {
-      const users: User[] = [
-        { id: 1, name: 'Alice', age: 30 }
-      ]
+      const users: User[] = [{ id: 1, name: 'Alice', age: 30 }]
       const select = new Select(users)
       const single = select.at(10)
 
@@ -239,7 +235,7 @@ describe('Select', () => {
         { id: 3, name: 'Charlie', age: 35 }
       ]
       const select = new Select(users)
-      const single = select.find((user) => user.age > 25)
+      const single = select.find(user => user.age > 25)
 
       expect(single).toBeInstanceOf(SingleSelect)
       expect(single.items).toHaveLength(1)
@@ -252,7 +248,7 @@ describe('Select', () => {
         { id: 2, name: 'Bob', age: 25 }
       ]
       const select = new Select(users)
-      const single = select.find((user) => user.age > 40)
+      const single = select.find(user => user.age > 40)
 
       expect(single).toBeInstanceOf(SingleSelect)
       expect(single.items).toHaveLength(0)
@@ -265,7 +261,7 @@ describe('Select', () => {
         { id: 3, name: 'Charlie', age: 30 }
       ]
       const select = new Select(users)
-      const single = select.find((user) => user.age === 30)
+      const single = select.find(user => user.age === 30)
 
       expect(single.items[0]?.name).toBe('Alice')
     })
@@ -303,10 +299,7 @@ describe('Select', () => {
         { userId: 'ext3', userName: 'Charlie', userAge: 35 }
       ]
 
-      const newSelect = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const newSelect = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
 
       expect(newSelect).toBeInstanceOf(Select)
       expect(newSelect.items).toHaveLength(2)
@@ -321,33 +314,21 @@ describe('Select', () => {
       ]
       const select = new Select(users)
 
-      const externalUsers: ExternalUser[] = [
-        { userId: 'ext2', userName: 'Bob', userAge: 25 }
-      ]
+      const externalUsers: ExternalUser[] = [{ userId: 'ext2', userName: 'Bob', userAge: 25 }]
 
-      const newSelect = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const newSelect = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
 
       expect(newSelect.context.size).toBe(1)
       expect(newSelect.context.get(externalUsers[0])).toEqual({ id: 2, name: 'Bob', age: 25 })
     })
 
     it('should handle non-matching items with matcher', () => {
-      const users: User[] = [
-        { id: 1, name: 'Alice', age: 30 }
-      ]
+      const users: User[] = [{ id: 1, name: 'Alice', age: 30 }]
       const select = new Select(users)
 
-      const externalUsers: ExternalUser[] = [
-        { userId: 'ext2', userName: 'NonExistent', userAge: 25 }
-      ]
+      const externalUsers: ExternalUser[] = [{ userId: 'ext2', userName: 'NonExistent', userAge: 25 }]
 
-      const newSelect = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const newSelect = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
 
       expect(newSelect.items).toHaveLength(1)
       expect(newSelect.items[0]).toBeUndefined()
@@ -368,10 +349,7 @@ describe('Select', () => {
         { userId: 'ext3', userName: 'Charlie', userAge: 35 }
       ]
 
-      const newSelect = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const newSelect = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
 
       // Verify all mappings are preserved
       expect(newSelect.context.size).toBe(3)
@@ -404,10 +382,7 @@ describe('Select', () => {
       const select = new Select(users)
       const externalUser: ExternalUser = { userId: 'ext2', userName: 'Bob', userAge: 25 }
 
-      const single = select.on(
-        externalUser,
-        (external, internal) => external.userName === internal?.name
-      )
+      const single = select.on(externalUser, (external, internal) => external.userName === internal?.name)
 
       expect(single).toBeInstanceOf(SingleSelect)
       expect(single.items).toHaveLength(1)
@@ -422,26 +397,18 @@ describe('Select', () => {
       const select = new Select(users)
       const externalUser: ExternalUser = { userId: 'ext2', userName: 'Bob', userAge: 25 }
 
-      const single = select.on(
-        externalUser,
-        (external, internal) => external.userName === internal?.name
-      )
+      const single = select.on(externalUser, (external, internal) => external.userName === internal?.name)
 
       expect(single.context.size).toBe(1)
       expect(single.context.get(externalUser)).toEqual({ id: 2, name: 'Bob', age: 25 })
     })
 
     it('should handle non-matching entity with matcher', () => {
-      const users: User[] = [
-        { id: 1, name: 'Alice', age: 30 }
-      ]
+      const users: User[] = [{ id: 1, name: 'Alice', age: 30 }]
       const select = new Select(users)
       const externalUser: ExternalUser = { userId: 'ext2', userName: 'NonExistent', userAge: 25 }
 
-      const single = select.on(
-        externalUser,
-        (external, internal) => external.userName === internal?.name
-      )
+      const single = select.on(externalUser, (external, internal) => external.userName === internal?.name)
 
       expect(single.items).toHaveLength(1)
       expect(single.items[0]).toBeUndefined()
@@ -460,7 +427,7 @@ describe('Select', () => {
       const select = new Select(users)
 
       const result = select
-        .filter((u) => u.age >= 28)
+        .filter(u => u.age >= 28)
         .sort((a, b) => a.age - b.age)
         .skip(1)
         .take(2)
@@ -480,7 +447,7 @@ describe('Select', () => {
       const select = new Select(users)
 
       const result = select
-        .filter((u) => u.age > 25)
+        .filter(u => u.age > 25)
         .revert()
         .take(3)
 
@@ -505,11 +472,8 @@ describe('Select', () => {
       ]
 
       const result = select
-        .from(
-          externalUsers,
-          (external, internal) => external.userName === internal?.name
-        )
-        .filter((u) => u !== undefined && u.age > 25)
+        .from(externalUsers, (external, internal) => external.userName === internal?.name)
+        .filter(u => u !== undefined && u.age > 25)
         .sort((a, b) => (a?.age || 0) - (b?.age || 0))
         .take(2)
 
@@ -537,20 +501,12 @@ describe('Select', () => {
         { userId: 'ext2', userName: 'Bob', userAge: 25 }
       ]
 
-      const intermediate = select.from(
-        externalUsers1,
-        (external, internal) => external.userName === internal?.name
-      )
+      const intermediate = select.from(externalUsers1, (external, internal) => external.userName === internal?.name)
 
       // Second from operation
-      const externalUsers2 = [
-        { userId: 'ext2', userName: 'Bob', userAge: 25 }
-      ]
+      const externalUsers2 = [{ userId: 'ext2', userName: 'Bob', userAge: 25 }]
 
-      const final = intermediate.from(
-        externalUsers2,
-        (external, internal) => external.userName === internal?.name
-      )
+      const final = intermediate.from(externalUsers2, (external, internal) => external.userName === internal?.name)
 
       expect(final.items).toHaveLength(1)
       expect(final.items[0]).toEqual({ id: 2, name: 'Bob', age: 25 })
@@ -574,11 +530,8 @@ describe('Select', () => {
       ]
 
       const result = select
-        .from(
-          externalUsers,
-          (external, internal) => external.userName === internal?.name
-        )
-        .filter((u) => u !== undefined && u.age >= 30)
+        .from(externalUsers, (external, internal) => external.userName === internal?.name)
+        .filter(u => u !== undefined && u.age >= 30)
         .at(0)
 
       expect(result).toBeInstanceOf(SingleSelect)
@@ -606,12 +559,9 @@ describe('Select', () => {
       ]
 
       const result = select
-        .from(
-          externalUsers,
-          (external, internal) => external.userName === internal?.name
-        )
+        .from(externalUsers, (external, internal) => external.userName === internal?.name)
         .sort((a, b) => (b?.age || 0) - (a?.age || 0)) // Sort descending by age
-        .find((u) => u !== undefined && u.age < 35)
+        .find(u => u !== undefined && u.age < 35)
 
       expect(result).toBeInstanceOf(SingleSelect)
       expect(result.items).toHaveLength(1)
@@ -637,13 +587,10 @@ describe('Select', () => {
         { userId: 'ext5', userName: 'Eve', userAge: 28 }
       ]
 
-      const mapped = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const mapped = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
       expect(mapped.context.size).toBe(5)
 
-      const filtered = mapped.filter((u) => u !== undefined && u.age >= 30)
+      const filtered = mapped.filter(u => u !== undefined && u.age >= 30)
       expect(filtered.context.size).toBe(3) // Alice, Charlie, David
 
       const limited = filtered.take(2)
@@ -664,10 +611,7 @@ describe('Select', () => {
 
       const externalUser: ExternalUser = { userId: 'ext1', userName: 'Alice', userAge: 30 }
 
-      const result = select.on(
-        externalUser,
-        (external, internal) => external.userName === internal?.name
-      )
+      const result = select.on(externalUser, (external, internal) => external.userName === internal?.name)
 
       expect(result).toBeInstanceOf(SingleSelect)
       expect(result.items).toHaveLength(1)
@@ -691,12 +635,9 @@ describe('Select', () => {
       ]
 
       const result = select
-        .from(
-          externalUsers,
-          (external, internal) => external.userName === internal?.name
-        )
+        .from(externalUsers, (external, internal) => external.userName === internal?.name)
         .revert()
-        .find((u) => u !== undefined && u.age === 25)
+        .find(u => u !== undefined && u.age === 25)
 
       expect(result).toBeInstanceOf(SingleSelect)
       expect(result.items).toHaveLength(1)
@@ -717,12 +658,9 @@ describe('Select', () => {
       ]
 
       const result = select
-        .from(
-          externalUsers,
-          (external, internal) => external.userName === internal?.name
-        )
-        .filter((u) => u !== undefined && u.age > 50)
-        .find((u) => u !== undefined)
+        .from(externalUsers, (external, internal) => external.userName === internal?.name)
+        .filter(u => u !== undefined && u.age > 50)
+        .find(u => u !== undefined)
 
       expect(result).toBeInstanceOf(SingleSelect)
       expect(result.items).toHaveLength(0)
@@ -745,17 +683,14 @@ describe('Select', () => {
         { userId: 'ext3', userName: 'Charlie', userAge: 35 }
       ]
 
-      const mapped = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const mapped = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
 
       // Context is populated by from with matcher
       expect(mapped.context.size).toBe(3)
       expect(mapped.items).toHaveLength(3)
 
       // Filter now preserves context but cleans it - only items that remain have context
-      const filtered = mapped.filter((u) => u !== undefined && u.age > 25)
+      const filtered = mapped.filter(u => u !== undefined && u.age > 25)
       expect(filtered.context.size).toBe(2)
       expect(filtered.items).toHaveLength(2)
 
@@ -777,10 +712,7 @@ describe('Select', () => {
         { userId: 'ext2', userName: 'Bob', userAge: 25 }
       ]
 
-      const result = select.from(
-        externalUsers,
-        (external, internal) => external.userName === internal?.name
-      )
+      const result = select.from(externalUsers, (external, internal) => external.userName === internal?.name)
 
       // Can access mapped context immediately after from
       expect(result.context.get(externalUsers[0])).toEqual({ id: 1, name: 'Alice', age: 30 })
@@ -808,8 +740,7 @@ describe('Select', () => {
       // Case-insensitive matching
       const result = select.from(
         externalUsers,
-        (external, internal) =>
-          external.userName.toLowerCase() === internal?.name.toLowerCase()
+        (external, internal) => external.userName.toLowerCase() === internal?.name.toLowerCase()
       )
 
       expect(result.items).toHaveLength(2)
@@ -854,4 +785,3 @@ describe('SingleSelect', () => {
     expect(single.items[0]).toBeUndefined()
   })
 })
-

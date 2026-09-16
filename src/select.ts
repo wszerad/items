@@ -40,15 +40,21 @@ export class Select<E, SE> extends BaseSelect<E, SE> {
   }
 
   filter(testFn: TestFn<E>) {
-    return new Select<E, SE>(this.items.filter((entry) => testFn(entry)), this.context)
+    return new Select<E, SE>(
+      this.items.filter(entry => testFn(entry)),
+      this.context
+    )
   }
 
-  revert(){
+  revert() {
     return new Select<E, SE>([...this.items].reverse(), this.context)
   }
 
   sort(sortFn: (x: E, y: E) => number) {
-    return new Select<E, SE>([...this.items].sort((a, b) => sortFn(a, b)), this.context)
+    return new Select<E, SE>(
+      [...this.items].sort((a, b) => sortFn(a, b)),
+      this.context
+    )
   }
 
   at(index: number) {
@@ -57,21 +63,20 @@ export class Select<E, SE> extends BaseSelect<E, SE> {
   }
 
   find(testFn: TestFn<E>) {
-    const item = this.items.find((entry) => testFn(entry))
+    const item = this.items.find(entry => testFn(entry))
     return new SingleSelect<E | undefined, SE>(item ? [item] : [], this.context)
   }
 
-  from<T>(entities: Iterable<E>): Select<E, SE>
+  from(entities: Iterable<E>): Select<E, SE>
   from<T>(entities: Iterable<T>, matcher: MatchFn<E, T>): Select<E | undefined, T>
   from<T>(entities: Iterable<E> | Iterable<T>, matcher?: MatchFn<E, T>): Select<E, SE> | Select<E | undefined, T> {
     if (matcher) {
       const items = Array.from(entities as Iterable<T>)
       const pairs = new Map(
-        items
-          .map(entry => {
-            const pair = this.items.find(item => matcher(entry, item))
-            return [entry, pair]
-          }) as [T, E | undefined][]
+        items.map(entry => {
+          const pair = this.items.find(item => matcher(entry, item))
+          return [entry, pair]
+        }) as [T, E | undefined][]
       )
       return new Select<E | undefined, T>(Array.from(pairs.values()), pairs)
     } else {
@@ -79,7 +84,7 @@ export class Select<E, SE> extends BaseSelect<E, SE> {
     }
   }
 
-  on<T>(entry: E): SingleSelect<E, SE>
+  on(entry: E): SingleSelect<E, SE>
   on<T>(entry: T, matcher: MatchFn<E, T>): SingleSelect<E | undefined, T>
   on<T>(entry: E, matcher?: MatchFn<E, T>): SingleSelect<E, SE> | SingleSelect<E | undefined, T> {
     if (matcher) {

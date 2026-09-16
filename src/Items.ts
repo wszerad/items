@@ -1,12 +1,19 @@
 import {
-  CheckFn, ItemId, ItemsOptions, ItemsState, Selector, SelectorChain, SelectorSelect,
-  SelectorSelectSingle, Updater
+  CheckFn,
+  ItemId,
+  ItemsOptions,
+  ItemsState,
+  Selector,
+  SelectorChain,
+  SelectorSelect,
+  SelectorSelectSingle,
+  Updater
 } from './types'
 import { defaultSelectId } from './utils'
 import { Select, SingleSelect } from './select'
 import { itemsDiff } from './diff'
 
-export class Items<E extends Object, I extends ItemId = ItemId> {
+export class Items<E extends object, I extends ItemId = ItemId> {
   private state: ItemsState<E, I>
 
   constructor(
@@ -14,9 +21,8 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     private options: ItemsOptions<E> = {}
   ) {
     const entities = new Map(
-      Array
-        .from(items)
-        .map((item) => {
+      Array.from(items)
+        .map(item => {
           const id = this.extractId(item)
           return [id, item]
         })
@@ -33,7 +39,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
   add(items: Iterable<E>) {
     const newEntities = new Map(this.state.entities)
 
-    Array.from(items).forEach((item) => {
+    Array.from(items).forEach(item => {
       const id = this.extractId(item)
       if (id === undefined) {
         return
@@ -48,7 +54,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
 
   // NOTE: update selected ids with partial data or call function
   update<SE, EE>(select: Selector<E, EE, I, SE>, updater: Partial<E>): Items<E, I>
-  update<SE, EE>(select: I | Iterable<I>, updater: Updater<E, E, E>): Items<E, I>
+  update(select: I | Iterable<I>, updater: Updater<E, E, E>): Items<E, I>
   update<SE, EE>(select: SelectorChain<E, EE, SE>, updater: Updater<E, EE, SE>): Items<E, I>
   update<SE, EE>(select: Selector<E, EE, I, SE>, updater: Updater<E, EE, SE>): Items<E, I> {
     const [, entities, map] = this.resolveSelector(select)
@@ -56,29 +62,26 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     const isFn = typeof updater === 'function'
 
     if (isFn && map.size) {
-      Array
-        .from(map.entries())
-        .forEach(([entity, pair]) => {
-          const updatedEntry = updater(pair, entity)
-          const id = this.extractId(updatedEntry)!
-          newEntities.set(id, updatedEntry)
-        })
+      Array.from(map.entries()).forEach(([entity, pair]) => {
+        const updatedEntry = updater(pair, entity)
+        const id = this.extractId(updatedEntry)!
+        newEntities.set(id, updatedEntry)
+      })
 
       return new Items<E, I>(newEntities.values(), this.options)
     }
 
-    entities
-      .forEach((entity) => {
-        if (isFn) {
-          const updatedEntry = updater(entity)
-          const id = this.extractId(updatedEntry)!
-          newEntities.set(id, updatedEntry)
-        } else if (entity) {
-          const updatedEntry = { ...(entity as unknown as E), ...updater }
-          const id = this.extractId(updatedEntry)!
-          newEntities.set(id, updatedEntry)
-        }
-      })
+    entities.forEach(entity => {
+      if (isFn) {
+        const updatedEntry = updater(entity)
+        const id = this.extractId(updatedEntry)!
+        newEntities.set(id, updatedEntry)
+      } else if (entity) {
+        const updatedEntry = { ...(entity as unknown as E), ...updater }
+        const id = this.extractId(updatedEntry)!
+        newEntities.set(id, updatedEntry)
+      }
+    })
 
     return new Items<E, I>(newEntities.values(), this.options)
   }
@@ -87,8 +90,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
   merge(items: Iterable<E>) {
     const newEntities = new Map(this.state.entities)
 
-    Array
-      .from(items)
+    Array.from(items)
       .map(item => [this.extractId(item), item] as [I, E])
       .filter(([id]) => id !== undefined)
       .forEach(([id, item]) => {
@@ -99,7 +101,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     return new Items<E, I>(newEntities.values(), this.options)
   }
 
-  remove<EE extends E = E>(select: Selector<E, EE, I>) {
+  remove<EE extends E = E, SE = unknown>(select: Selector<E, EE, I, SE>) {
     const [, entities] = this.resolveSelector(select)
     const selectedIds = entities.map(entity => this.extractId(entity as E))
     const idsToKeep = this.state.ids.filter(id => !selectedIds.includes(id))
@@ -107,23 +109,23 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     return new Items<E, I>(items, this.options)
   }
 
-  pick<EE extends E = E>(select: Selector<E, EE, I>) {
+  pick<EE extends E = E, SE = unknown>(select: Selector<E, EE, I, SE>) {
     const [, entities] = this.resolveSelector(select)
     return new Items<E, I>(entities as E[], this.options)
   }
 
-  select<EE, SE = never>(select: I): E | undefined
-  select<EE, SE = never>(select: Iterable<I>): E[]
+  select(select: I): E | undefined
+  select(select: Iterable<I>): E[]
   select<EE, SE = never>(select: SelectorSelect<E, EE, SE>): E[]
   select<EE, SE = never>(select: SelectorSelectSingle<E, EE, SE>): E | undefined
   select<EE, SE = never>(select: Selector<E, EE, I, SE>): undefined | E | E[] {
     let [single, entities] = this.resolveSelector(select)
     entities = entities.filter(Boolean)
-    return single ? entities[0] as unknown as E : entities as unknown as E[]
+    return single ? (entities[0] as unknown as E) : (entities as unknown as E[])
   }
 
-  selectId<EE, SE = never>(select: I): I | undefined
-  selectId<EE, SE = never>(select: Iterable<I>): I[]
+  selectId(select: I): I | undefined
+  selectId(select: Iterable<I>): I[]
   selectId<EE, SE = never>(select: SelectorSelectSingle<E, EE, SE>): I | undefined
   selectId<EE, SE = never>(select: SelectorSelect<E, EE, SE>): I[]
   selectId<EE, SE = never>(select: Selector<E, EE, I, SE>): undefined | I | I[] {
@@ -150,7 +152,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     return this.state.ids.includes(id)
   }
 
-  get(id: I ): E | undefined
+  get(id: I): E | undefined
   get(id: undefined): undefined
   get(id: I | undefined): E | undefined {
     return id === undefined ? undefined : this.state.entities.get(id)
@@ -180,10 +182,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     }
   }
 
-  private sortIds(
-    ids: I[],
-    entities: Map<I, E>
-  ): Array<I> {
+  private sortIds(ids: I[], entities: Map<I, E>): Array<I> {
     if (this.sortComparer === false) {
       return ids
     }
@@ -211,8 +210,7 @@ export class Items<E extends Object, I extends ItemId = ItemId> {
     return this.state.entities.values()
   }
 
-  static compare<E extends Object, I extends ItemId>(base: Items<E, I>, to: Items<E, I>) {
+  static compare<E extends object, I extends ItemId>(base: Items<E, I>, to: Items<E, I>) {
     return itemsDiff(base, to)
   }
 }
-

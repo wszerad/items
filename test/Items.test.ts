@@ -32,7 +32,7 @@ describe('Items', () => {
         { userId: 'a1', name: 'Alice', age: 30 },
         { userId: 'b2', name: 'Bob', age: 25 }
       ]
-      const items = new Items(users, { selectId: (u) => u.userId })
+      const items = new Items(users, { selectId: u => u.userId })
       expect(items.getIds()).toEqual(['a1', 'b2'])
     })
 
@@ -116,10 +116,7 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
       ])
-      const updated = items.update(
-        (s) => s.filter((e: User) => e.age > 25),
-        { active: true }
-      )
+      const updated = items.update(s => s.filter((e: User) => e.age > 25), { active: true })
 
       expect(updated.get(1)?.active).toBe(true)
       expect(updated.get(2)?.active).toBeUndefined()
@@ -131,7 +128,7 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 30 },
         { id: 2, name: 'Bob', age: 25 }
       ])
-      const updated = items.update([1, 2], (user) => ({
+      const updated = items.update([1, 2], user => ({
         ...user!,
         age: user!.age + 1
       }))
@@ -317,7 +314,7 @@ describe('Items', () => {
 
     it('should merge partial properties', () => {
       const items = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
-      const merged = items.merge([{ id: 1, age: 31 } as any])
+      const merged = items.merge([{ id: 1, age: 31 } as unknown as User])
 
       expect(merged.get(1)?.name).toBe('Alice')
       expect(merged.get(1)?.age).toBe(31)
@@ -355,7 +352,7 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
       ])
-      const removed = items.remove((s) => s.filter((e: User) => e.age > 25))
+      const removed = items.remove(s => s.filter((e: User) => e.age > 25))
 
       expect(removed.length).toBe(1)
       expect(removed.getIds()).toEqual([2])
@@ -380,7 +377,7 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
       ])
-      const picked = items.pick((s) => s.filter((e: User) => e.age >= 30))
+      const picked = items.pick(s => s.filter((e: User) => e.age >= 30))
 
       expect(picked.length).toBe(2)
       expect(picked.getIds()).toEqual([1, 3])
@@ -406,7 +403,7 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
       ])
-      const selected = items.select((s) => s.filter((e: User) => e.age > 25))
+      const selected = items.select(s => s.filter((e: User) => e.age > 25))
 
       expect(selected.length).toBe(2)
       expect(selected.map(u => u.name)).toEqual(['Alice', 'Charlie'])
@@ -418,7 +415,7 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
       ])
-      const selected = items.select((s) => s.at(1))
+      const selected = items.select(s => s.at(1))
 
       expect(selected).toBeDefined()
       expect(selected?.name).toBe('Bob')
@@ -431,17 +428,15 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 }
       ])
       const user = { id: 1, name: 'Alice', age: 30 }
-      const selected = items.select((s) => s.on(user))
+      const selected = items.select(s => s.on(user))
 
       expect(selected).toBeDefined()
       expect(selected?.name).toBe('Alice')
     })
 
     it('should return undefined for single select with invalid index', () => {
-      const items = new Items<User>([
-        { id: 1, name: 'Alice', age: 30 }
-      ])
-      const selected = items.select((s) => s.at(10))
+      const items = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
+      const selected = items.select(s => s.at(10))
 
       expect(selected).toBeUndefined()
     })
@@ -466,7 +461,7 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 30 },
         { id: 2, name: 'Bob', age: 25 }
       ])
-      const result = items.every((u) => u.age > 20)
+      const result = items.every(u => u.age > 20)
 
       expect(result).toBe(true)
     })
@@ -476,7 +471,7 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 30 },
         { id: 2, name: 'Bob', age: 25 }
       ])
-      const result = items.every((u) => u.age > 25)
+      const result = items.every(u => u.age > 25)
 
       expect(result).toBe(false)
     })
@@ -488,7 +483,7 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 30 },
         { id: 2, name: 'Bob', age: 25 }
       ])
-      const result = items.some((u) => u.age > 25)
+      const result = items.some(u => u.age > 25)
 
       expect(result).toBe(true)
     })
@@ -498,7 +493,7 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 30 },
         { id: 2, name: 'Bob', age: 25 }
       ])
-      const result = items.some((u) => u.age > 40)
+      const result = items.some(u => u.age > 40)
 
       expect(result).toBe(false)
     })
@@ -577,18 +572,14 @@ describe('Items', () => {
 
   describe('extractId', () => {
     it('should return id of entity using default selector', () => {
-      const items = new Items<User>([
-        { id: 1, name: 'Alice', age: 30 }
-      ])
+      const items = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
       const user = { id: 2, name: 'Bob', age: 25 }
       expect(items.extractId(user)).toBe(2)
     })
 
     it('should return id of entity using custom selector', () => {
-      const users = [
-        { userId: 'a1', name: 'Alice', age: 30 }
-      ]
-      const items = new Items(users, { selectId: (u) => u.userId })
+      const users = [{ userId: 'a1', name: 'Alice', age: 30 }]
+      const items = new Items(users, { selectId: u => u.userId })
       const user = { userId: 'b2', name: 'Bob', age: 25 }
       expect(items.extractId(user)).toBe('b2')
     })
@@ -601,7 +592,7 @@ describe('Items', () => {
         { id: 2, name: 'Bob', age: 25 },
         { id: 3, name: 'Charlie', age: 35 }
       ])
-      const ids = items.selectId((s) => s.filter((u: User) => u.age > 25))
+      const ids = items.selectId(s => s.filter((u: User) => u.age > 25))
       expect(Array.isArray(ids)).toBe(true)
       expect(ids).toEqual([1, 3])
     })
@@ -611,15 +602,13 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 30 },
         { id: 2, name: 'Bob', age: 25 }
       ])
-      const id = items.selectId((s) => s.at(0))
+      const id = items.selectId(s => s.at(0))
       expect(id).toBe(1)
     })
 
     it('should return undefined when single selection not found', () => {
-      const items = new Items<User>([
-        { id: 1, name: 'Alice', age: 30 }
-      ])
-      const id = items.selectId((s) => s.at(10))
+      const items = new Items<User>([{ id: 1, name: 'Alice', age: 30 }])
+      const id = items.selectId(s => s.at(10))
       expect(id).toBeUndefined()
     })
   })
@@ -688,4 +677,3 @@ describe('Items', () => {
     })
   })
 })
-

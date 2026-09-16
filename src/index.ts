@@ -12,10 +12,10 @@ export type {
   SelectId,
   ItemsOptions,
   ItemsState,
+  DiffEntry,
   ItemDiff,
   ItemsDiff
 } from './types'
 
 // Utilities
 export { defaultSelectId } from './utils'
-
