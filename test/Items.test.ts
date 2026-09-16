@@ -147,6 +147,155 @@ describe('Items', () => {
       expect(updated.length).toBe(2)
       expect(updated.get(2)?.name).toBe('Bob')
     })
+
+    describe('with select.from', () => {
+      interface ApiUser {
+        userName: string
+        userAge: number
+      }
+
+      const createItems = () =>
+        new Items<User>([
+          { id: 1, name: 'Alice', age: 30 },
+          { id: 2, name: 'Bob', age: 25 },
+          { id: 3, name: 'Charlie', age: 35 }
+        ])
+
+      it('should update items selected from a plain entity list', () => {
+        const items = createItems()
+        const updated = items.update(s => s.from([{ id: 2, name: 'Bob', age: 25 }]), { active: true })
+
+        expect(updated.length).toBe(3)
+        expect(updated.get(2)?.active).toBe(true)
+        expect(updated.get(1)?.active).toBeUndefined()
+        expect(updated.get(3)?.active).toBeUndefined()
+      })
+
+      it('should insert entities that are not part of the collection yet', () => {
+        const items = createItems()
+        const updated = items.update(s => s.from([{ id: 4, name: 'Dave', age: 40 }]), { active: true })
+
+        expect(updated.length).toBe(4)
+        expect(updated.get(4)).toEqual({ id: 4, name: 'Dave', age: 40, active: true })
+      })
+
+      it('should update matched items with foreign entities', () => {
+        const items = createItems()
+        const apiUsers: ApiUser[] = [
+          { userName: 'Bob', userAge: 26 },
+          { userName: 'Charlie', userAge: 36 }
+        ]
+
+        const updated = items.update(
+          s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+          (user, apiUser) => ({ ...user!, age: apiUser!.userAge })
+        )
+
+        expect(updated.length).toBe(3)
+        expect(updated.get(1)?.age).toBe(30)
+        expect(updated.get(2)?.age).toBe(26)
+        expect(updated.get(3)?.age).toBe(36)
+      })
+
+      it('should pass the matched entity as the second updater argument', () => {
+        const items = createItems()
+        const apiUsers: ApiUser[] = [{ userName: 'Bob', userAge: 26 }]
+        const calls: Array<[User | undefined, ApiUser | undefined]> = []
+
+        items.update(
+          s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+          (user, apiUser) => {
+            calls.push([user, apiUser])
+            return user!
+          }
+        )
+
+        expect(calls).toHaveLength(1)
+        expect(calls[0][0]).toEqual({ id: 2, name: 'Bob', age: 25 })
+        expect(calls[0][1]).toBe(apiUsers[0])
+      })
+
+      it('should create items for foreign entities without a match', () => {
+        const items = createItems()
+        const apiUsers: ApiUser[] = [
+          { userName: 'Bob', userAge: 26 },
+          { userName: 'Dave', userAge: 40 }
+        ]
+
+        const updated = items.update(
+          s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+          (user, apiUser) => user ?? { id: 4, name: apiUser!.userName, age: apiUser!.userAge }
+        )
+
+        expect(updated.length).toBe(4)
+        expect(updated.get(2)?.age).toBe(25)
+        expect(updated.get(4)).toEqual({ id: 4, name: 'Dave', age: 40 })
+      })
+
+      it('should skip unmatched foreign entities when updating with partial data', () => {
+        const items = createItems()
+        const apiUsers: ApiUser[] = [
+          { userName: 'Bob', userAge: 26 },
+          { userName: 'Dave', userAge: 40 }
+        ]
+
+        const updated = items.update(s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name), {
+          active: true
+        })
+
+        expect(updated.length).toBe(3)
+        expect(updated.get(2)?.active).toBe(true)
+        expect(updated.get(2)?.age).toBe(25)
+        expect(updated.get(1)?.active).toBeUndefined()
+      })
+
+      it('should keep the match context after chaining', () => {
+        const items = createItems()
+        const apiUsers: ApiUser[] = [
+          { userName: 'Alice', userAge: 31 },
+          { userName: 'Bob', userAge: 26 }
+        ]
+
+        const updated = items.update(
+          s =>
+            s
+              .from(apiUsers, (apiUser, user) => apiUser.userName === user?.name)
+              .filter(user => !!user && user.age > 28),
+          (user, apiUser) => ({ ...user!, age: apiUser!.userAge })
+        )
+
+        expect(updated.get(1)?.age).toBe(31)
+        expect(updated.get(2)?.age).toBe(25)
+      })
+
+      it('should match the first entity when several entities match', () => {
+        const items = new Items<User>([
+          { id: 1, name: 'Alice', age: 30 },
+          { id: 2, name: 'Alice', age: 40 }
+        ])
+        const apiUsers: ApiUser[] = [{ userName: 'Alice', userAge: 50 }]
+
+        const updated = items.update(
+          s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+          (user, apiUser) => ({ ...user!, age: apiUser!.userAge })
+        )
+
+        expect(updated.get(1)?.age).toBe(50)
+        expect(updated.get(2)?.age).toBe(40)
+      })
+
+      it('should not mutate the source collection', () => {
+        const items = createItems()
+        const apiUsers: ApiUser[] = [{ userName: 'Bob', userAge: 26 }]
+
+        items.update(
+          s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+          (user, apiUser) => ({ ...user!, age: apiUser!.userAge })
+        )
+
+        expect(items.get(2)?.age).toBe(25)
+      })
+    })
   })
 
   describe('merge', () => {

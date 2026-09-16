@@ -122,6 +122,13 @@ const updated = users.update(
   (s) => s.filter((u) => u.age > 25),
   { active: true }
 )
+
+// Update from a foreign shape, matched against the existing items.
+// The updater receives the matched item first and the foreign entity second.
+const updated = users.update(
+  (s) => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+  (user, apiUser) => ({ ...user!, age: apiUser!.userAge })
+)
 ```
 
 ##### `merge(items: Iterable<E>): Items<E>`
@@ -348,14 +355,34 @@ const single = select.at(0)
 ```
 
 ##### `from(entities: Iterable<E>): Select<E>`
+##### `from<T>(entities: Iterable<T>, matcher: (entity: T, existing: E) => boolean): Select<E | undefined>`
 
 Creates a new Select from the given entities.
+
+Without a matcher the entities are selected as-is:
 
 ```typescript
 const select = new Select(users.getIds(), users)
 const newSelect = select.from([
   { id: 2, name: 'Bob', age: 25 }
 ])
+```
+
+With a matcher, each foreign entity is paired with the first existing item it matches. The
+selection holds the matched items (`undefined` where nothing matched) and keeps the pairing in
+`context`, so a later `update` receives both sides:
+
+```typescript
+const apiUsers = [
+  { userName: 'Bob', userAge: 26 },
+  { userName: 'Dave', userAge: 40 }
+]
+
+const select = new Select(users.getIds(), users)
+const matched = select.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name)
+
+matched.items // [{ id: 2, name: 'Bob', age: 25 }, undefined]
+matched.context.get(apiUsers[0]) // { id: 2, name: 'Bob', age: 25 }
 ```
 
 ##### `on(entry: E): SingleSelect<E>`
@@ -448,6 +475,50 @@ const users = new Items(
 
 console.log(users.getIds()) // [2, 1, 3] - sorted by age
 ```
+
+### Syncing Foreign Data
+
+`select.from(entities, matcher)` pairs a list of foreign entities with the items already in the
+collection. The updater then receives both sides — the matched item (or `undefined`) and the
+foreign entity it was matched with — which makes it a one-step upsert from an external payload:
+
+```typescript
+interface ApiUser {
+  userName: string
+  userAge: number
+}
+
+const users = new Items<User>([
+  { id: 1, name: 'Alice', age: 30 },
+  { id: 2, name: 'Bob', age: 25 }
+])
+
+const apiUsers: ApiUser[] = [
+  { userName: 'Bob', userAge: 26 },
+  { userName: 'Dave', userAge: 40 }
+]
+
+let nextId = Math.max(...users.getIds().map(Number)) + 1
+
+const synced = users.update(
+  (s) => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+  (user, apiUser) =>
+    user
+      ? { ...user, age: apiUser!.userAge }
+      : { id: nextId++, name: apiUser!.userName, age: apiUser!.userAge }
+)
+
+synced.get(2) // { id: 2, name: 'Bob', age: 26 }  – matched and updated
+synced.length // 3 – 'Dave' had no match and was created
+```
+
+Notes:
+
+- When several items match, the first one wins.
+- With a partial updater (`{ active: true }`) unmatched entities are skipped instead of created,
+  because there is no item to merge the partial into.
+- Chaining keeps the pairing: `s.from(apiUsers, matcher).filter((user) => !!user && user.age > 28)`
+  narrows the selection and the surviving entries still carry their foreign entity.
 
 ### Complex Updates
 
