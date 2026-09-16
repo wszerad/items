@@ -39,33 +39,24 @@ const users = new Items<User>([
 ])
 
 // Add items
-const updated = users.add([
-  { id: 4, name: 'David', age: 40 }
-])
+const updated = users.add([{ id: 4, name: 'David', age: 40 }])
 
 // Update items
-const older = users.update([1, 2], (user) => ({
+const older = users.update([1, 2], user => ({
   ...user!,
   age: user!.age + 1
 }))
 
 // Select and filter - returns array
-const adults = users.select((s) => 
-  s.filter((user) => user.age >= 30)
-    .sort((a, b) => a.age - b.age)
-)
+const adults = users.select(s => s.filter(user => user.age >= 30).sort((a, b) => a.age - b.age))
 console.log(adults) // [{ id: 1, name: 'Alice', age: 30 }, { id: 3, name: 'Charlie', age: 35 }]
 
 // Select single item using at() - returns single item or undefined
-const oldestUser = users.select((s) => 
-  s.sort((a, b) => b.age - a.age).at(0)
-)
+const oldestUser = users.select(s => s.sort((a, b) => b.age - a.age).at(0))
 console.log(oldestUser) // { id: 3, name: 'Charlie', age: 35 }
 
 // Get IDs instead of items
-const adultIds = users.selectId((s) => 
-  s.filter((user) => user.age >= 30)
-)
+const adultIds = users.selectId(s => s.filter(user => user.age >= 30))
 console.log(adultIds) // [1, 3]
 ```
 
@@ -80,13 +71,15 @@ new Items<E>(items?: Iterable<E>, options?: ItemsOptions<E>)
 ```
 
 **Options:**
+
 - `selectId?: (entity: E) => ItemId` - Custom ID selector (defaults to `entity.id`)
 - `sortComparer?: false | ((a: E, b: E) => number)` - Sorting comparator for maintaining order
 
 **Example:**
+
 ```typescript
 const items = new Items(users, {
-  selectId: (user) => user.userId,
+  selectId: user => user.userId,
   sortComparer: (a, b) => a.name.localeCompare(b.name)
 })
 ```
@@ -98,9 +91,7 @@ const items = new Items(users, {
 Adds new items to the collection. Items with existing IDs are ignored.
 
 ```typescript
-const updated = users.add([
-  { id: 4, name: 'David', age: 40 }
-])
+const updated = users.add([{ id: 4, name: 'David', age: 40 }])
 ```
 
 ##### `update(selector: Selector<E>, updater: Updater<E>): Items<E>`
@@ -112,21 +103,18 @@ Updates selected items with partial data or a function. Can create new items if 
 const updated = users.update(1, { age: 31 })
 
 // Update with function
-const updated = users.update([1, 2], (user) => ({
+const updated = users.update([1, 2], user => ({
   ...user!,
   age: user!.age + 1
 }))
 
 // Update with selector function
-const updated = users.update(
-  (s) => s.filter((u) => u.age > 25),
-  { active: true }
-)
+const updated = users.update(s => s.filter(u => u.age > 25), { active: true })
 
 // Update from a foreign shape, matched against the existing items.
 // The updater receives the matched item first and the foreign entity second.
 const updated = users.update(
-  (s) => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+  s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
   (user, apiUser) => ({ ...user!, age: apiUser!.userAge })
 )
 ```
@@ -138,7 +126,7 @@ Merges items into the collection. Adds new items and overwrites existing ones.
 ```typescript
 const merged = users.merge([
   { id: 1, name: 'Alice', age: 31 }, // Updates existing
-  { id: 5, name: 'Eve', age: 28 }     // Adds new
+  { id: 5, name: 'Eve', age: 28 } // Adds new
 ])
 ```
 
@@ -154,7 +142,7 @@ const removed = users.remove(1)
 const removed = users.remove([1, 2])
 
 // Remove by function
-const removed = users.remove((s) => s.filter((u) => u.age < 30))
+const removed = users.remove(s => s.filter(u => u.age < 30))
 ```
 
 ##### `pick(selector: Selector<E>): Items<E>`
@@ -162,7 +150,7 @@ const removed = users.remove((s) => s.filter((u) => u.age < 30))
 Returns a new Items instance containing only the selected items.
 
 ```typescript
-const picked = users.pick((s) => s.filter((u) => u.age >= 30))
+const picked = users.pick(s => s.filter(u => u.age >= 30))
 ```
 
 ##### `select(selector: Selector<E>): E[] | E | undefined`
@@ -177,11 +165,11 @@ const user = items.select(1)
 const users = items.select([1, 2])
 
 // Select with function returning Select - returns array
-const adults = items.select((s) => s.filter((u) => u.age >= 30))
+const adults = items.select(s => s.filter(u => u.age >= 30))
 
 // Select with function returning SingleSelect - returns single item or undefined
-const firstUser = items.select((s) => s.at(0))
-const oldest = items.select((s) => s.sort((a, b) => b.age - a.age).at(0))
+const firstUser = items.select(s => s.at(0))
+const oldest = items.select(s => s.sort((a, b) => b.age - a.age).at(0))
 ```
 
 ##### `selectId(selector: Selector<E>): ItemId[] | ItemId | undefined`
@@ -190,13 +178,13 @@ Selects item IDs instead of items. Returns an array of IDs for multiple selectio
 
 ```typescript
 // Get IDs for filtered items - returns array
-const adultIds = items.selectId((s) => s.filter((u) => u.age >= 30))
+const adultIds = items.selectId(s => s.filter(u => u.age >= 30))
 
 // Get ID of first item - returns ItemId or undefined
-const firstId = items.selectId((s) => s.at(0))
+const firstId = items.selectId(s => s.at(0))
 
 // Get ID of oldest user - returns ItemId or undefined
-const oldestId = items.selectId((s) => s.sort((a, b) => b.age - a.age).at(0))
+const oldestId = items.selectId(s => s.sort((a, b) => b.age - a.age).at(0))
 ```
 
 ##### `extractId(entity: E): ItemId`
@@ -208,8 +196,8 @@ const user = { id: 5, name: 'Eve', age: 28 }
 const id = items.extractId(user) // Returns: 5
 
 // With custom selector
-const products = new Items(items, { 
-  selectId: (p) => p.sku 
+const products = new Items(items, {
+  selectId: p => p.sku
 })
 const product = { sku: 'ABC123', name: 'Widget' }
 const sku = products.extractId(product) // Returns: 'ABC123'
@@ -228,7 +216,7 @@ const empty = users.clear()
 Tests whether all items pass the provided function.
 
 ```typescript
-const allAdults = users.every((u) => u.age >= 18)
+const allAdults = users.every(u => u.age >= 18)
 ```
 
 ##### `some(check: (entity: E) => boolean): boolean`
@@ -236,7 +224,7 @@ const allAdults = users.every((u) => u.age >= 18)
 Tests whether at least one item passes the provided function.
 
 ```typescript
-const hasSenior = users.some((u) => u.age >= 65)
+const hasSenior = users.some(u => u.age >= 65)
 ```
 
 ##### `has(id: ItemId): boolean`
@@ -279,7 +267,6 @@ Gets the number of items in the collection.
 console.log(users.length) // 3
 ```
 
-
 #### Static Methods
 
 ##### `Items.compare<E>(base: Items<E>, to: Items<E>): ItemsDiff`
@@ -310,7 +297,7 @@ The Select class provides a fluent API for querying and transforming item collec
 Takes the first `n` items.
 
 ```typescript
-users.select((s) => s.take(2))
+users.select(s => s.take(2))
 ```
 
 ##### `skip(len: number): Select<E>`
@@ -318,7 +305,7 @@ users.select((s) => s.take(2))
 Skips the first `n` items.
 
 ```typescript
-users.select((s) => s.skip(1))
+users.select(s => s.skip(1))
 ```
 
 ##### `filter(testFn: (entry: E, id: ItemId, index: number) => boolean): Select<E>`
@@ -326,7 +313,7 @@ users.select((s) => s.skip(1))
 Filters items based on a predicate function.
 
 ```typescript
-users.select((s) => s.filter((user, id, index) => user.age > 25))
+users.select(s => s.filter((user, id, index) => user.age > 25))
 ```
 
 ##### `revert(): Select<E>`
@@ -334,7 +321,7 @@ users.select((s) => s.filter((user, id, index) => user.age > 25))
 Reverses the order of items.
 
 ```typescript
-users.select((s) => s.revert())
+users.select(s => s.revert())
 ```
 
 ##### `sort(sortFn: (a: E, b: E) => number): Select<E>`
@@ -342,7 +329,7 @@ users.select((s) => s.revert())
 Sorts items using a comparator function.
 
 ```typescript
-users.select((s) => s.sort((a, b) => a.age - b.age))
+users.select(s => s.sort((a, b) => a.age - b.age))
 ```
 
 ##### `at(index: number): SingleSelect<E>`
@@ -355,6 +342,7 @@ const single = select.at(0)
 ```
 
 ##### `from(entities: Iterable<E>): Select<E>`
+
 ##### `from<T>(entities: Iterable<T>, matcher: (entity: T, existing: E) => boolean): Select<E | undefined>`
 
 Creates a new Select from the given entities.
@@ -363,9 +351,7 @@ Without a matcher the entities are selected as-is:
 
 ```typescript
 const select = new Select(users.getIds(), users)
-const newSelect = select.from([
-  { id: 2, name: 'Bob', age: 25 }
-])
+const newSelect = select.from([{ id: 2, name: 'Bob', age: 25 }])
 ```
 
 With a matcher, each foreign entity is paired with the first existing item it matches. The
@@ -399,8 +385,9 @@ const single = select.on({ id: 1, name: 'Alice', age: 30 })
 Selectors can be chained for powerful queries:
 
 ```typescript
-const result = users.select((s) => 
-  s.filter((u) => u.age >= 25)
+const result = users.select(s =>
+  s
+    .filter(u => u.age >= 25)
     .sort((a, b) => a.age - b.age)
     .skip(1)
     .take(2)
@@ -451,7 +438,7 @@ const products = new Items<Product>(
     { sku: 'ABC123', name: 'Widget', price: 9.99 },
     { sku: 'XYZ789', name: 'Gadget', price: 19.99 }
   ],
-  { selectId: (product) => product.sku }
+  { selectId: product => product.sku }
 )
 
 const widget = products.get('ABC123')
@@ -501,11 +488,9 @@ const apiUsers: ApiUser[] = [
 let nextId = Math.max(...users.getIds().map(Number)) + 1
 
 const synced = users.update(
-  (s) => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
+  s => s.from(apiUsers, (apiUser, user) => apiUser.userName === user?.name),
   (user, apiUser) =>
-    user
-      ? { ...user, age: apiUser!.userAge }
-      : { id: nextId++, name: apiUser!.userName, age: apiUser!.userAge }
+    user ? { ...user, age: apiUser!.userAge } : { id: nextId++, name: apiUser!.userName, age: apiUser!.userAge }
 )
 
 synced.get(2) // { id: 2, name: 'Bob', age: 26 }  – matched and updated
@@ -527,8 +512,8 @@ Perform complex transformations:
 ```typescript
 // Increment age for all users over 25
 const updated = users.update(
-  (s) => s.filter((u) => u.age > 25),
-  (user) => ({
+  s => s.filter(u => u.age > 25),
+  user => ({
     ...user!,
     age: user!.age + 1,
     senior: user!.age >= 65
@@ -541,14 +526,12 @@ const updated = users.update(
 All operations are immutable:
 
 ```typescript
-const original = new Items([
-  { id: 1, name: 'Alice', age: 30 }
-])
+const original = new Items([{ id: 1, name: 'Alice', age: 30 }])
 
 const updated = original.update(1, { age: 31 })
 
 console.log(original.get(1)?.age) // 30 - unchanged
-console.log(updated.get(1)?.age)  // 31 - new instance
+console.log(updated.get(1)?.age) // 31 - new instance
 ```
 
 ### Iteration
@@ -576,10 +559,10 @@ const users = new Items<User>([
 ])
 
 // Select by index - returns single User or undefined
-const firstUser = users.select((s) => s.at(0))
+const firstUser = users.select(s => s.at(0))
 console.log(firstUser?.name) // 'Alice'
 
-const secondUser = users.select((s) => s.at(1))
+const secondUser = users.select(s => s.at(1))
 console.log(secondUser?.name) // 'Bob'
 
 // Select by ID - returns single User or undefined
@@ -587,19 +570,15 @@ const user = users.select(2)
 console.log(user?.name) // 'Bob'
 
 // Out of bounds returns undefined
-const notFound = users.select((s) => s.at(10))
+const notFound = users.select(s => s.at(10))
 console.log(notFound) // undefined
 
 // Chain operations before selecting single item
-const oldestUser = users.select((s) => 
-  s.sort((a, b) => b.age - a.age).at(0)
-)
+const oldestUser = users.select(s => s.sort((a, b) => b.age - a.age).at(0))
 console.log(oldestUser?.name) // 'Charlie' (age 35)
 
 // Get just the ID instead of the full item
-const oldestId = users.selectId((s) => 
-  s.sort((a, b) => b.age - a.age).at(0)
-)
+const oldestId = users.selectId(s => s.sort((a, b) => b.age - a.age).at(0))
 console.log(oldestId) // 3
 ```
 
@@ -617,9 +596,7 @@ interface User {
 const users = new Items<User>() // Fully typed
 
 // Type inference works automatically
-const names: string[] = users
-  .select((s) => s.filter((u) => u.age >= 30))
-  .map(u => u.name)
+const names: string[] = users.select(s => s.filter(u => u.age >= 30)).map(u => u.name)
 ```
 
 ## Types
@@ -627,14 +604,9 @@ const names: string[] = users
 ```typescript
 type ItemId = string | number
 
-type Selector<E> = 
-  | ((selector: BaseSelect<E>) => BaseSelect<E>) 
-  | ItemId 
-  | Iterable<ItemId>
+type Selector<E> = ((selector: BaseSelect<E>) => BaseSelect<E>) | ItemId | Iterable<ItemId>
 
-type Updater<E> = 
-  | ((entity: E | undefined) => E)
-  | Partial<E>
+type Updater<E> = ((entity: E | undefined) => E) | Partial<E>
 
 type ItemsOptions<E> = {
   selectId?: (entity: E) => ItemId
@@ -664,4 +636,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Repository
 
 https://github.com/wszerad/items
-
