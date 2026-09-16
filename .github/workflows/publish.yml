@@ -1,22 +1,32 @@
-name: Publish
+name: Publish lib
 
 on:
   release:
     types: [created]
 
 jobs:
-  publish-chain:
+  publish-npm:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
-      packages: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v5
+      - uses: voidzero-dev/setup-vp@v1.20.0
         with:
-          node-version: "24"
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - run: npm publish --access public
+          node-version: '24'
+          cache: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org/
+          always-auth: true
+          scope: wssz
+      - run: vp install
+      - run: vp check
+      - run: vp test run
+      - run: vp pack
+      - run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
