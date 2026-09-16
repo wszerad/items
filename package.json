@@ -7,6 +7,7 @@
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
@@ -15,26 +16,28 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run typecheck && npm run bundle",
-    "typecheck": "tsgo -p tsconfig.json",
-    "bundle": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "oxlint src",
-    "lint:format": "oxlint src && oxfmt --check src",
-    "format": "oxfmt src"
+    "build": "npm run check && npm run bundle",
+    "bundle": "vp pack",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "check": "vp check src test vite.config.ts && npm run typecheck",
+    "check:fix": "vp check --fix src test vite.config.ts",
+    "lint": "vp lint src test",
+    "format": "vp fmt src test vite.config.ts",
+    "format:check": "vp fmt --check src test vite.config.ts"
   },
   "dependencies": {
-    "ohash": "^2.0.11"
+    "ohash": "^2.0.12"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
-    "@typescript/native-preview": "^7.0.0-dev.20251231.1",
-    "oxfmt": "^0.21.0",
-    "oxlint": "^1.36.0",
-    "tsdown": "^0.18.4",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "@types/node": "^26.6.1",
+    "typescript": "^7.0.2",
+    "vite-plus": "^0.3.2"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.2",
+    "vitest": "4.1.11"
   },
   "keywords": [
     "array",
@@ -47,6 +50,5 @@
     "type": "git",
     "url": "git+https://github.com/wszerad/items.git"
   },
-  "license": "MIT",
-  "module": "./dist/index.js"
+  "license": "MIT"
 }

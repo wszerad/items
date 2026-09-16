@@ -35,10 +35,7 @@ describe('Items', () => {
     })
 
     it('uses custom selectId', () => {
-      const items = new Items<Book>(
-        [],
-        { selectId: (book) => book.isbn }
-      )
+      const items = new Items<Book>([], { selectId: book => book.isbn })
       const updated = items.insert({ isbn: '978-0', title: 'Test', year: 2020 })
       expect(updated.getIds()).toEqual(['978-0'])
     })
@@ -118,10 +115,7 @@ describe('Items', () => {
     })
 
     it('maintains sort order when inserting', () => {
-      const items = new Items<User>(
-        [],
-        { sortComparer: (a, b) => a.name.localeCompare(b.name) }
-      )
+      const items = new Items<User>([], { sortComparer: (a, b) => a.name.localeCompare(b.name) })
       const updated = items.insertMany([
         { id: 3, name: 'Charlie' },
         { id: 1, name: 'Alice' },
@@ -133,7 +127,10 @@ describe('Items', () => {
 
     it('inserts into existing sorted collection', () => {
       const items = new Items(
-        [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
+        [
+          { id: 1, name: 'Alice' },
+          { id: 3, name: 'Charlie' }
+        ],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
       const updated = items.insertMany([{ id: 2, name: 'Bob' }])
@@ -204,7 +201,10 @@ describe('Items', () => {
 
     it('maintains sort order when upserting', () => {
       const items = new Items(
-        [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
+        [
+          { id: 1, name: 'Alice' },
+          { id: 3, name: 'Charlie' }
+        ],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
       const updated = items.upsertMany([{ id: 2, name: 'Bob' }])
@@ -248,9 +248,7 @@ describe('Items', () => {
     })
 
     it('removes properties not in new entity', () => {
-      const items = new Items([
-        { id: 1, name: 'Alice', age: 25 } as User
-      ])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 } as User])
       const updated = items.set({ id: 1, name: 'Alice' })
 
       expect(updated.select(1)).toEqual({ id: 1, name: 'Alice' })
@@ -287,7 +285,10 @@ describe('Items', () => {
 
     it('maintains sort order when setting', () => {
       const items = new Items(
-        [{ id: 1, name: 'Alice' }, { id: 3, name: 'Charlie' }],
+        [
+          { id: 1, name: 'Alice' },
+          { id: 3, name: 'Charlie' }
+        ],
         { sortComparer: (a, b) => a.name.localeCompare(b.name) }
       )
       const updated = items.setMany([{ id: 2, name: 'Bob' }])
@@ -464,9 +465,7 @@ describe('Items', () => {
     })
 
     it('checks if entity exists by predicate', () => {
-      const items = new Items([
-        { id: 1, name: 'Alice', age: 25 }
-      ])
+      const items = new Items([{ id: 1, name: 'Alice', age: 25 }])
 
       expect(items.hasMany(user => user.age === 25)).toBe(true)
       expect(items.hasMany(user => user.age === 30)).toBe(false)
@@ -492,9 +491,7 @@ describe('Items', () => {
     })
 
     it('works with empty array', () => {
-      const items = new Items([
-        { id: 1, name: 'Alice' }
-      ])
+      const items = new Items([{ id: 1, name: 'Alice' }])
 
       expect(items.hasMany([])).toBe(false)
     })
@@ -547,10 +544,7 @@ describe('Items', () => {
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 }
       ])
-      const updated = items.updateMany(
-        user => user.age! < 30,
-        { age: 26 }
-      )
+      const updated = items.updateMany(user => user.age! < 30, { age: 26 })
 
       expect(updated.select(1)?.age).toBe(26)
       expect(updated.select(2)?.age).toBe(30)
@@ -593,9 +587,7 @@ describe('Items', () => {
     })
 
     it('removes non-existent entity without error', () => {
-      const items = new Items([
-        { id: 1, name: 'Alice' }
-      ])
+      const items = new Items([{ id: 1, name: 'Alice' }])
       const updated = items.remove(99)
 
       expect(updated.getIds()).toEqual([1])
@@ -688,10 +680,7 @@ describe('Items', () => {
 
   describe('sortComparer', () => {
     it('sorts by name ascending', () => {
-      const items = new Items<User>(
-        [],
-        { sortComparer: (a, b) => a.name.localeCompare(b.name) }
-      )
+      const items = new Items<User>([], { sortComparer: (a, b) => a.name.localeCompare(b.name) })
       const updated = items.insertMany([
         { id: 3, name: 'Charlie' },
         { id: 1, name: 'Alice' },
@@ -702,10 +691,7 @@ describe('Items', () => {
     })
 
     it('sorts by age descending', () => {
-      const items = new Items<User>(
-        [],
-        { sortComparer: (a, b) => (b.age ?? 0) - (a.age ?? 0) }
-      )
+      const items = new Items<User>([], { sortComparer: (a, b) => (b.age ?? 0) - (a.age ?? 0) })
       const updated = items.insertMany([
         { id: 1, name: 'Alice', age: 25 },
         { id: 2, name: 'Bob', age: 30 },
@@ -731,10 +717,7 @@ describe('Items', () => {
     })
 
     it('sortComparer: false disables sorting', () => {
-      const items = new Items<User>(
-        [],
-        { sortComparer: false }
-      )
+      const items = new Items<User>([], { sortComparer: false })
       const updated = items.insertMany([
         { id: 3, name: 'Charlie' },
         { id: 1, name: 'Alice' },
@@ -921,10 +904,7 @@ describe('Items', () => {
         { id: 3, name: 'Charlie', age: 35 }
       ])
 
-      const updated = base
-        .remove(3)
-        .update(1, { age: 26 })
-        .insert({ id: 4, name: 'Dave', age: 40 })
+      const updated = base.remove(3).update(1, { age: 26 }).insert({ id: 4, name: 'Dave', age: 40 })
 
       const diff = updated.diff(base)
 
@@ -958,9 +938,7 @@ describe('Items', () => {
         address: { city: string; country: string }
       }
 
-      const base = new Items<UserWithAddress>([
-        { id: 1, name: 'Alice', address: { city: 'NYC', country: 'USA' } }
-      ])
+      const base = new Items<UserWithAddress>([{ id: 1, name: 'Alice', address: { city: 'NYC', country: 'USA' } }])
 
       const updated = base.update(1, {
         address: { city: 'LA', country: 'USA' }
@@ -1010,9 +988,7 @@ describe('Items', () => {
         { id: 3, name: 'Charlie', age: 35 }
       ])
 
-      const updated = base
-        .update(1, { age: 26 })
-        .update(2, { name: 'Robert', age: 31 })
+      const updated = base.update(1, { age: 26 }).update(2, { name: 'Robert', age: 31 })
 
       const diff = updated.diff(base)
 
@@ -1060,10 +1036,7 @@ describe('Items', () => {
 
   describe('custom selectId with Books', () => {
     it('works with string IDs', () => {
-      const items = new Items<Book>(
-        [],
-        { selectId: (book) => book.isbn }
-      )
+      const items = new Items<Book>([], { selectId: book => book.isbn })
       const updated = items.insertMany([
         { isbn: '978-0-1', title: 'Book A', year: 2020 },
         { isbn: '978-0-2', title: 'Book B', year: 2021 }
@@ -1074,13 +1047,10 @@ describe('Items', () => {
     })
 
     it('sorts books by year', () => {
-      const items = new Items<Book>(
-        [],
-        {
-          selectId: (book) => book.isbn,
-          sortComparer: (a, b) => a.year - b.year
-        }
-      )
+      const items = new Items<Book>([], {
+        selectId: book => book.isbn,
+        sortComparer: (a, b) => a.year - b.year
+      })
       const updated = items.insertMany([
         { isbn: '978-0-3', title: 'Book C', year: 2022 },
         { isbn: '978-0-1', title: 'Book A', year: 2020 },
@@ -1092,4 +1062,3 @@ describe('Items', () => {
     })
   })
 })
-

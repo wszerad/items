@@ -22,12 +22,10 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     private options: ItemsOptions<E> = {}
   ) {
     const entities = new Map(
-      Array
-        .from(items)
-        .map((item) => {
-          const id = this.selectId(item)
-          return [id, item]
-        })
+      Array.from(items).map(item => {
+        const id = this.selectId(item)
+        return [id, item]
+      })
     )
 
     this.state = {
@@ -57,10 +55,10 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
   }
 
   insertMany(entities: Iterable<E>) {
-    return new Items<E, I>([
-      ...this,
-      ...Array.from(entities).filter(entity => !this.has(this.selectId(entity)))
-    ], this.options)
+    return new Items<E, I>(
+      [...this, ...Array.from(entities).filter(entity => !this.has(this.selectId(entity)))],
+      this.options
+    )
   }
 
   upsert(entity: Partial<E>) {
@@ -86,10 +84,7 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
   }
 
   setMany(entities: Iterable<E>) {
-    return new Items<E, I>([
-      ...this,
-      ...entities
-    ], this.options)
+    return new Items<E, I>([...this, ...entities], this.options)
   }
 
   every(check: SelectorFn<E>) {
@@ -107,7 +102,7 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
   hasMany(select: Selector<E, I>) {
     let failToFind = false
     let result = false
-    selector(this, select, (entity) => {
+    selector(this, select, entity => {
       if (entity) {
         result = true
       } else {
@@ -186,10 +181,7 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
     return itemsDiff(base, this)
   }
 
-  private sortIds(
-    ids: I[],
-    entities: Map<I, E>
-  ): Array<I> {
+  private sortIds(ids: I[], entities: Map<I, E>): Array<I> {
     if (this.sortComparer === false) {
       return ids
     }
@@ -202,7 +194,7 @@ export class Items<E, I extends StrOrNum = StrOrNum> {
   }
 
   private selectId(entity: E): I {
-    return this.options?.selectId?.(entity) as undefined || defaultSelectId(entity as E & { id: I })
+    return (this.options?.selectId?.(entity) as undefined) || defaultSelectId(entity as E & { id: I })
   }
 
   private get sortComparer() {

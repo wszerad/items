@@ -760,7 +760,16 @@ console.log(items.getIds()) // [1, 2, 3] - sorted by name
 
 ### Scripts
 
-- `npm test` – runs tests (Vitest)
+The project uses [Vite+](https://viteplus.dev) (`vp`) as its unified toolchain — test runner,
+linter, formatter and library bundler all come from the single `vite-plus` package and are
+configured in [`vite.config.ts`](vite.config.ts).
+
+- `npm test` – runs tests (`vp test run`)
 - `npm run test:watch` – watch mode
-- `npm run build` – typecheck + bundling (tsc + tsdown)
-- `npm run typecheck` – TypeScript type checking (
+- `npm run check` – format check + lint + typecheck
+- `npm run check:fix` – auto-fix formatting and lint issues
+- `npm run lint` – lint only (`vp lint`)
+- `npm run format` – format sources (`vp fmt`)
+- `npm run typecheck` – TypeScript type checking (`tsc`)
+- `npm run bundle` – build the library (`vp pack`)
+- `npm run build` – check + bundle
